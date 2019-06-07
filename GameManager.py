@@ -1,4 +1,8 @@
-""" This file contains the class definitions for the game manager object"""
+"""
+Pyboids - GameManager
+ * A class containing the definitions of the GameManager object
+ * Copyright (c) 2019 Meaj
+"""
 import pygame
 import math
 import random

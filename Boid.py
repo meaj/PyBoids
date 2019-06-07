@@ -1,4 +1,8 @@
-""" This file contains the class definitions for the Boid objects"""
+"""
+Pyboids - Boid
+ * A class containing the definitions of the Boid objects
+ * Copyright (c) 2019 Meaj
+"""
 import math
 
 # TODO: move height calculations and storage from GameManager to Boid so it is internalized

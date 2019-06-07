@@ -1,4 +1,8 @@
-""" This file contains class definitions for the flock manager object"""
+"""
+Pyboids - FlockManager
+ * A class containing the definitions of the FlockManager object
+ * Copyright (c) 2019 Meaj
+"""
 
 
 class FlockManager:

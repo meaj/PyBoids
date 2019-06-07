@@ -1,4 +1,8 @@
-""" This file contains the class definitions for the Goal objects"""
+"""
+Pyboids - Goal
+ * A class containing the definitions of the Goal objects
+ * Copyright (c) 2019 Meaj
+"""
 
 
 class Goal:
