@@ -14,3 +14,6 @@ class Goal:
 
     def get_position(self):
         return self.x, self.y
+
+    def get_id(self):
+        return self.goal_id

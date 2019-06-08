@@ -5,17 +5,16 @@ Pyboids - Boid
 """
 import math
 
-# TODO: move height calculations and storage from GameManager to Boid so it is internalized
-
 
 class Boid:
 
-    def __init__(self, boid_id, x, y):
+    def __init__(self, boid_id, x, y, side_len):
         # This is used to track the individual boids
         self.boid_id = boid_id
         # These will be the input nodes for the neural network
         self.x = x  # x position on grid
         self.y = y  # y position on grid
+        self.height = math.sqrt(3) * (side_len // 2)
         self.goal_dir = 0  # direction of nearest goal relative to boid
         self.my_dir = 0  # current heading of the boid
         self.vel = 0  # velocity of the current boid
@@ -55,6 +54,9 @@ class Boid:
 
     def get_score(self):
         return self.score
+
+    def get_height(self):
+        return self.height
 
     # Increments the score by the passed value or 1 by default
     def increment_score(self, val=1):

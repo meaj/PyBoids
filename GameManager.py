@@ -10,7 +10,6 @@ from Boid import Boid
 from Goal import Goal
 from FlockManager import FlockManager
 
-# TODO: move boid and goal height calculation and storage to respective classes
 # TODO: adjust drawing methods to be more efficient and actually alpha the unused parts of their rects
 # TODO: Draw a line representing the direction of the flock
 # TODO: Draw visible range of each boid for connection formation
@@ -23,7 +22,7 @@ GOLD = (128, 128, 64)
 
 class GameManager:
 
-    def __init__(self, window_width=720, sim_area_height=400, fps=60):
+    def __init__(self, window_width=720, sim_area_height=400, fps=60, boid_height=12):
         # Initialize random and pygame
         random.seed()
         pygame.init()
@@ -50,17 +49,17 @@ class GameManager:
                                random.randrange(15, self.sim_area_height - 15)))
         # temporary testing boid to setup controls, hitboxes, etc
         # Triangle test
-        self.boids.append(Boid(1, 315, 270))
-        self.boids.append(Boid(2, 300, 300))
-        self.boids.append(Boid(3, 330, 300))
-        self.boids.append(Boid(4, 345, 330))
-        self.boids.append(Boid(5, 315, 330))
-        self.boids.append(Boid(6, 285, 330))
+        self.boids.append(Boid(1, 315, 270, boid_height))
+        self.boids.append(Boid(2, 300, 300, boid_height))
+        self.boids.append(Boid(3, 330, 300, boid_height))
+        self.boids.append(Boid(4, 345, 330, boid_height))
+        self.boids.append(Boid(5, 315, 330, boid_height))
+        self.boids.append(Boid(6, 285, 330, boid_height))
         # Square test
-        #self.boids.append(Boid(1, 330, 330))
-        #self.boids.append(Boid(2, 300, 300))
-        #self.boids.append(Boid(3, 330, 300))
-        #self.boids.append(Boid(4, 300, 330))
+        # self.boids.append(Boid(1, 330, 330, boid_height))
+        # self.boids.append(Boid(2, 300, 300, boid_height))
+        # self.boids.append(Boid(3, 330, 300, boid_height))
+        # self.boids.append(Boid(4, 300, 330, boid_height))
 
     def get_boid_by_id(self, boid_id):
         for boid in self.boids:
@@ -89,13 +88,10 @@ class GameManager:
                                        random.randrange(15, self.sim_area_height - 15)))
 
     # Displays monitoring data at the top of the screen
-    def display_text(self, text):
+    def display_monitoring(self, fps,  playtime, num_flocks):
+        text = "FPS: {:6.2f}{}PLAYTIME: {:6.2f}{}FLOCKS: {}".format(fps, " " * 5, playtime, " " * 5, num_flocks)
         surface = self.font.render(text, True, (0, 255, 0))
         self.screen.blit(surface, (0, 0))
-
-    def display_monitoring(self, fps,  score, new_vel, flock_dir, goal_dir):
-        self.display_text("FPS: {:6.2f}{}SCORE: {}{}VEL: {:6.2f}{}DIR: {:6.0f}{}OPT: {:6.0f}".
-                          format(fps, " " * 5, score, " " * 5, new_vel, " " * 5, flock_dir, " " * 5, goal_dir))
 
     # Draws shapes representing goal objects
     def draw_goal(self, pos, radius):
@@ -108,8 +104,7 @@ class GameManager:
         self.surface.blit(surface, (x, y))
 
     # Draws shapes representing the boid objects
-    def draw_boid(self, x, y, side_len, angle, b_id):
-        height = math.sqrt(3) * (side_len // 2)
+    def draw_boid(self, x, y, height, angle, b_id):
         points = [(int(height // 2), 0),
                   (0, int(height)),
                   (int(height), int(height))]
@@ -163,7 +158,9 @@ class GameManager:
         monitor = pygame.Surface((self.window_width, self.window_height - self.sim_area_height))
         monitor.blit(
             self.font.render("Number  |     Centroids    |  Direction  |  Goal Direction  |  Score  |  Members", True,
-                             GREEN), (12, 0))
+                             GREEN), (11, 0))
+
+        i = 0
         for i in range(len(flock_list)):
             cent = "{:3.2f}, {:3.2f}".format(flock_centroids[i][0], flock_centroids[i][1])
             string = "{0:^6}{1:^5s}{2:^15}{1:^4s}{3:^10.2f}{1:^4s}{4:^14.2f}{1:^5s}{5:^6d}{1:^4s}{6:}"\
@@ -181,10 +178,10 @@ class GameManager:
             ms = self.clock.tick(self.FPS)
             self.playtime += ms / 1000.0
             presses = pygame.key.get_pressed()
-            new_vel = self.boids[0].get_speed()
-            new_dir = self.boids[0].get_direction()
             # Use this during testing for key based control
-            run, new_vel, new_dir = self.key_movement(presses, run, new_vel, new_dir)
+            # TODO: When converting to NN control, new_vel and new_dir will be calculated by each boid's network
+            run, new_vel, new_dir = self.key_movement(presses, run, self.boids[0].get_speed(),
+                                                      self.boids[0].get_direction())
             # Pull up debugger
             if presses[pygame.K_SPACE]:
                 import pdb
@@ -195,7 +192,8 @@ class GameManager:
                 # TODO: When converting to NN control, new_vel and new_dir will be calculated by each boid's network
                 temp_boid.move(new_vel, new_dir, (self.window_width, self.sim_area_height), math.sqrt(3) * (15 // 2))
                 temp_boid.set_goal_dir(self.goals[0].get_position())
-                self.draw_boid(temp_boid.get_position()[0], temp_boid.get_position()[1], 12, new_dir, temp_boid.get_id())
+                self.draw_boid(temp_boid.get_position()[0], temp_boid.get_position()[1], temp_boid.get_height(),
+                               new_dir, temp_boid.get_id())
 
             self.flocks.form_flocks(self.boids)
             self.flocks.calc_flock_data(self.boids)
@@ -209,13 +207,10 @@ class GameManager:
                 pygame.quit()
                 exit()
 
-            new_dir = self.flocks.get_thetas()[0]
-            goal_dir = self.flocks.get_goal_thetas()[0]
-            self.display_monitoring(self.clock.get_fps(), self.flocks.get_scores()[0], new_vel, new_dir, goal_dir)
+            self.display_monitoring(self.clock.get_fps(), self.playtime, len(self.flocks.get_flocks()))
             self.draw_goal(self.goals[0].get_position(), 3)
             for centroid in self.flocks.get_centroids():
                 self.draw_centroid(centroid)
-
             self.display_flock_data()
             # bottom line
             pygame.draw.line(self.background, GREEN, (0, self.sim_area_height),
