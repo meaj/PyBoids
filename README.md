@@ -30,7 +30,7 @@ This is a highly experimental project and contents may change suddenly.
 * **PyBoids.py**: The driver for this project
 * **GameManager.py**: This controls the display of all the boids as well as the other managers and simulation objects.
 * **FlockManager.py**: This controls the collections of boid objects
-* **Boid.py**: This is the class that boid objects are instantiated from
+* **Entities.py**: This is the class that boid objects are instantiated from
 * **Goal.py**: This is the class that goal objects are instantiated from
 * **LICENSE**: This is the license for the project
 

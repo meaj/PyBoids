@@ -6,9 +6,9 @@ Pyboids - GameManager
 import pygame
 import math
 import random
-from Boid import Boid
-from Goal import Goal
+from Entities import Boid, Goal
 from FlockManager import FlockManager
+from ReynoldsControl import move_all_boids
 
 # TODO: adjust drawing methods to be more efficient and actually alpha the unused parts of their rects
 # TODO: Draw a line representing the direction of the flock
@@ -45,16 +45,16 @@ class GameManager:
         self.boids = []
         self.flocks = FlockManager()
         # temporary goal deployment
-        self.goals.append(Goal(random.randrange(15, self.window_width - 15),
+        self.goals.append(Goal(1, random.randrange(15, self.window_width - 15),
                                random.randrange(15, self.sim_area_height - 15)))
         # temporary testing boid to setup controls, hitboxes, etc
         # Triangle test
         self.boids.append(Boid(1, 315, 270, boid_height))
         self.boids.append(Boid(2, 300, 300, boid_height))
         self.boids.append(Boid(3, 330, 300, boid_height))
-        self.boids.append(Boid(4, 345, 330, boid_height))
-        self.boids.append(Boid(5, 315, 330, boid_height))
-        self.boids.append(Boid(6, 285, 330, boid_height))
+        #self.boids.append(Boid(4, 345, 330, boid_height))
+        #self.boids.append(Boid(5, 315, 330, boid_height))
+        #self.boids.append(Boid(6, 285, 330, boid_height))
         # Square test
         # self.boids.append(Boid(1, 330, 330, boid_height))
         # self.boids.append(Boid(2, 300, 300, boid_height))
@@ -84,7 +84,7 @@ class GameManager:
                 self.flocks.update_flock_score(boid.get_id(), self.boids)
                 # temporary goal redeployment
                 del self.goals[0]
-                self.goals.append(Goal(random.randrange(15, self.window_width - 15),
+                self.goals.append(Goal(1, random.randrange(15, self.window_width - 15),
                                        random.randrange(15, self.sim_area_height - 15)))
 
     # Displays monitoring data at the top of the screen
@@ -178,22 +178,27 @@ class GameManager:
             ms = self.clock.tick(self.FPS)
             self.playtime += ms / 1000.0
             presses = pygame.key.get_pressed()
+            for event in pygame.event.get():
+                # Check for quit
+                if event.type == pygame.QUIT or presses[pygame.K_ESCAPE]:
+                    run = False
             # Use this during testing for key based control
             # TODO: When converting to NN control, new_vel and new_dir will be calculated by each boid's network
-            run, new_vel, new_dir = self.key_movement(presses, run, self.boids[0].get_speed(),
-                                                      self.boids[0].get_direction())
+            # run, new_vel, new_dir = self.key_movement(presses, run, self.boids[0].get_speed(),
+            #                                         self.boids[0].get_direction())
             # Pull up debugger
             if presses[pygame.K_SPACE]:
                 import pdb
                 pdb.set_trace()
 
+            move_all_boids(self.boids, self.flocks.get_flocks(), self.goals[0])
+
             for temp_boid in self.boids:
                 temp_boid.find_connections(self.boids)
                 # TODO: When converting to NN control, new_vel and new_dir will be calculated by each boid's network
-                temp_boid.move(new_vel, new_dir, (self.window_width, self.sim_area_height), math.sqrt(3) * (15 // 2))
                 temp_boid.set_goal_dir(self.goals[0].get_position())
                 self.draw_boid(temp_boid.get_position()[0], temp_boid.get_position()[1], temp_boid.get_height(),
-                               new_dir, temp_boid.get_id())
+                               temp_boid.my_dir, temp_boid.get_id())
 
             self.flocks.form_flocks(self.boids)
             self.flocks.calc_flock_data(self.boids)
