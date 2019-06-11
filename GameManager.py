@@ -191,6 +191,7 @@ class GameManager:
                 import pdb
                 pdb.set_trace()
 
+            self.get_collisions()
             move_all_boids(self.boids, self.flocks.get_flocks(), self.goals[0])
 
             for temp_boid in self.boids:
@@ -206,7 +207,7 @@ class GameManager:
                 num_flocks = len(self.flocks.get_flocks())
                 print("There are {} flocks: {}".format(num_flocks, self.flocks.get_flocks()))
 
-            self.get_collisions()
+
             if len(self.boids) == 0:
                 print("This sim was run for {0:.2f} seconds before all boids died".format(self.playtime))
                 pygame.quit()

@@ -33,8 +33,8 @@ def move_all_boids(boid_list, flock_list, goal):
 def cohesion_rule(boid, flock, boid_dict):
     center = Vector2D()
     for mem in flock:
-        member = boid_dict[mem]
-        if member is not boid:
+        member = boid_dict.get(mem)
+        if member is not boid and member is not None:
             center += member.get_velocity()
     center /= len(flock)
     #print("Cohesion Vel: {}".format((center - boid.get_velocity()) / 1))
@@ -44,8 +44,8 @@ def cohesion_rule(boid, flock, boid_dict):
 def separation_rule(boid, flock, boid_dict):
     avoid = Vector2D()
     for mem in flock:
-        member = boid_dict[mem]
-        if member is not boid:
+        member = boid_dict.get(mem)
+        if member is not boid and member is not None:
             if abs(member.get_position() - boid.get_position()) < 15:
                 avoid -= member.get_position() - boid.get_position()
     #print("Separation Vel: {}".format(avoid))
@@ -55,8 +55,8 @@ def separation_rule(boid, flock, boid_dict):
 def alignment_rule(boid, flock, boid_dict):
     perceived_vel = Vector2D()
     for mem in flock:
-        member = boid_dict[mem]
-        if member is not boid:
+        member = boid_dict.get(mem)
+        if member is not boid and member is not None:
             perceived_vel += member.get_velocity()
     perceived_vel /= len(flock)
     #print("Alignment Vel: {}".format(perceived_vel - boid.get_velocity()))
