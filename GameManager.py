@@ -22,12 +22,13 @@ GOLD = (128, 128, 64)
 
 class GameManager:
 
-    def __init__(self, window_width=720, sim_area_height=400, fps=60, boid_height=12):
+    def __init__(self, window_width=980, sim_area_height=620, fps=60, boid_height=12):
         # Initialize random and pygame
         random.seed()
         pygame.init()
         # Setup Window
         pygame.display.set_caption("Press ESC to quit")
+        self.boid_height = boid_height
         self.window_width = window_width  # width of the window and simulation area
         self.sim_area_height = sim_area_height  # height of the simulation area
         self.window_height = sim_area_height + 15 * 10
@@ -48,13 +49,17 @@ class GameManager:
         self.goals.append(Goal(1, random.randrange(15, self.window_width - 15),
                                random.randrange(15, self.sim_area_height - 15)))
         # temporary testing boid to setup controls, hitboxes, etc
+        for i in range(0, 16):
+            self.boids.append(Boid(i, random.randrange(0, self.window_width), random.randrange(1, self.sim_area_height),
+                                   boid_height))
+
         # Triangle test
-        self.boids.append(Boid(1, 315, 270, boid_height))
-        self.boids.append(Boid(2, 300, 300, boid_height))
-        self.boids.append(Boid(3, 330, 300, boid_height))
-        #self.boids.append(Boid(4, 345, 330, boid_height))
-        #self.boids.append(Boid(5, 315, 330, boid_height))
-        #self.boids.append(Boid(6, 285, 330, boid_height))
+        # self.boids.append(Boid(1, 315, 270, boid_height))
+        # self.boids.append(Boid(2, 300, 300, boid_height))
+        # self.boids.append(Boid(3, 330, 300, boid_height))
+        # self.boids.append(Boid(4, 345, 330, boid_height))
+        # self.boids.append(Boid(5, 315, 330, boid_height))
+        # self.boids.append(Boid(6, 285, 330, boid_height))
         # Square test
         # self.boids.append(Boid(1, 330, 330, boid_height))
         # self.boids.append(Boid(2, 300, 300, boid_height))
@@ -192,7 +197,8 @@ class GameManager:
                 pdb.set_trace()
 
             self.get_collisions()
-            move_all_boids(self.boids, self.flocks.get_flocks(), self.goals[0])
+            move_all_boids(self.boids, self.flocks.get_flocks(), self.goals[0],
+                           (self.window_width, self.sim_area_height), self.boid_height)
 
             for temp_boid in self.boids:
                 temp_boid.find_connections(self.boids)

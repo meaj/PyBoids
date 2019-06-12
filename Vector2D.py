@@ -44,6 +44,9 @@ class Vector2D:
         else:
             print("Index out of range")
 
+    def prox(self):
+        return self.x ** 2 + self.y ** 2
+
     def argument(self):
         arg = math.degrees(math.acos(Vector2D(0, 1)*self/self.__abs__()))
         if self.x < 0:
@@ -51,8 +54,3 @@ class Vector2D:
         else:
             return arg
 
-    def rotate(self, theta):
-        theta = math.radians(theta)
-        cos_theta, sin_theta = math.cos(theta), math.sin(theta)
-        x, y = cos_theta*self.x - sin_theta*self.y, sin_theta*self.x + cos_theta*self.y
-        return Vector2D(x, y)
