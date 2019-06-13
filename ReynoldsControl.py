@@ -1,7 +1,14 @@
+"""
+Pyboids - ReynoldsControl
+ * My implementation of the flocking algorithm devised by Craig Reynolds
+ * Copyright (c) 2019 Meaj
+"""
 from Vector2D import Vector2D
+import random
 
 
 def move_all_boids(boid_list, flock_list, goal, board_dims, boid_height):
+    # Create a dictionary of all boids by id to quickly search for boids by id values extracted from flock
     boid_dict = dict()
     for boid in boid_list:
         boid_dict.update({boid.get_id(): boid})
@@ -10,26 +17,25 @@ def move_all_boids(boid_list, flock_list, goal, board_dims, boid_height):
         for flock in flock_list:
             b_id = boid.get_id()
             if b_id in flock:
-                v1 = cohesion_rule(boid, flock, boid_dict)
-                v2 = separation_rule(boid, flock, boid_dict)
-                v3 = alignment_rule(boid, flock, boid_dict)
-                v4 = tend_to_position(boid, goal.get_position())
-                dv = v1 + v2 + v3 + v4
-                # Velocity limiting rules
-                if dv.x > 1:
-                    dv.x = 1
-                elif dv.x < -1:
-                    dv.x = -1
 
-                if dv.y > 1:
-                    dv.y = 1
-                elif dv.y < -1:
-                    dv.y = -1
+                # Calculate components of our velocity based on various rules
+                v1 = cohesion_rule(boid, flock, boid_dict)
+                v2 = separation_rule(boid, flock, boid_dict, boid_height)
+                v3 = alignment_rule(boid, flock, boid_dict)
+                # Special rule to check if goal is visible
+                if boid.is_object_visible(boid.calc_angle_from_pos(goal.get_position())):
+                    v4 = tend_to_position(boid, goal.get_position())
+                else:
+                    v4 = Vector2D(random.randrange(0.0, 2.0), random.randrange(0.0, 2.0))
+                v5 = avoid_walls(boid, board_dims, boid_height)
+
+                dv = v1 + v2 + v3 + v4 + v5
 
                 boid.update_velocity(dv)
                 boid.update_position(board_dims, boid_height)
 
 
+# Encourage boids to form flocks
 def cohesion_rule(boid, flock, boid_dict):
     center = Vector2D()
     for mem in flock:
@@ -37,23 +43,21 @@ def cohesion_rule(boid, flock, boid_dict):
         if member is not boid and member is not None:
             center += member.get_velocity()
     center /= len(flock)
-    #print("Cohesion Vel: {}".format((center - boid.get_velocity()) / 1))
-    return (center - boid.get_velocity()) / 1
+    return center - boid.get_velocity()
 
 
-def separation_rule(boid, flock, boid_dict):
+# Encourage boids to avoid colliding as this causes mutual boid death
+def separation_rule(boid, flock, boid_dict, boid_height):
     avoid = Vector2D()
     for mem in flock:
         member = boid_dict.get(mem)
         if member is not boid and member is not None:
-            if 15 <= abs(member.get_position() - boid.get_position()) < 20:
-                avoid -= (member.get_position() - boid.get_position())/2
-            elif abs(member.get_position() - boid.get_position()) < 15:
+            if abs(member.get_position() - boid.get_position()) < boid_height*2:
                 avoid -= member.get_position() - boid.get_position()
-    #print("Separation Vel: {}".format(avoid))
     return avoid
 
 
+# Encourage boids in a given flock to match the average velocity of the flock
 def alignment_rule(boid, flock, boid_dict):
     perceived_vel = Vector2D()
     for mem in flock:
@@ -61,10 +65,26 @@ def alignment_rule(boid, flock, boid_dict):
         if member is not boid and member is not None:
             perceived_vel += member.get_velocity()
     perceived_vel /= len(flock)
-    #print("Alignment Vel: {}".format(perceived_vel - boid.get_velocity()))
-    return (perceived_vel - boid.get_velocity())/16
+    return (perceived_vel - boid.get_velocity())/4
 
 
+# Encourage boids to head in the direction of the goal
 def tend_to_position(boid, position):
-    #print("Goal Vel: {}".format((position - boid.get_position())))
-    return (position - boid.get_position())/32
+    return (position - boid.get_position())/8
+
+
+# Encourage boids to avoid walls as they can increase chance of collision
+def avoid_walls(boid, board_dims, boid_height):
+    wall_avoid = Vector2D()
+    boid_pos = boid.get_position()
+    if boid_pos.x < boid_height:
+        wall_avoid.x = boid_height
+    elif boid_pos.x >= board_dims[0] - boid_height:
+        wall_avoid.x = -boid_height
+
+    if boid_pos.y < boid_height:
+        wall_avoid.y = boid_height
+    elif boid_pos.y >= board_dims[1] - boid_height:
+        wall_avoid.y = -boid_height
+
+    return wall_avoid

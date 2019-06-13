@@ -18,6 +18,9 @@ class Vector2D:
         elif type(other) == float or type(other) == int:
             return Vector2D(self.x * other, self.y * other)
 
+    def __rmul__(self, other):
+        return self.__mul__(other)
+
     def __truediv__(self, other):
         if type(other) == Vector2D:
             return self.x / other.x + self.y / other.y
@@ -43,9 +46,6 @@ class Vector2D:
             return self.y
         else:
             print("Index out of range")
-
-    def prox(self):
-        return self.x ** 2 + self.y ** 2
 
     def argument(self):
         arg = math.degrees(math.acos(Vector2D(0, 1)*self/self.__abs__()))

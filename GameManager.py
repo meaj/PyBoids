@@ -13,21 +13,27 @@ from ReynoldsControl import move_all_boids
 # TODO: adjust drawing methods to be more efficient and actually alpha the unused parts of their rects
 # TODO: Draw a line representing the direction of the flock
 # TODO: Draw visible range of each boid for connection formation
+# TODO: Add button to toggle flock monitoring
+# TODO: Find and fix bug causing jerky diagonal movement
+
 
 RED = (255, 0, 0)
 GREEN = (0, 255, 0)
 BLACK = (0, 0, 0)
 GOLD = (128, 128, 64)
 
+# Format for update is completed_release.goal_number.update_number
+VERSION = "0.3.3"
+
 
 class GameManager:
 
-    def __init__(self, window_width=980, sim_area_height=620, fps=60, boid_height=12):
+    def __init__(self, window_width=980, sim_area_height=620, fps=60, boid_height=10):
         # Initialize random and pygame
         random.seed()
         pygame.init()
         # Setup Window
-        pygame.display.set_caption("Press ESC to quit")
+        pygame.display.set_caption("PyBoids Ver. {}".format(VERSION))
         self.boid_height = boid_height
         self.window_width = window_width  # width of the window and simulation area
         self.sim_area_height = sim_area_height  # height of the simulation area
@@ -49,7 +55,7 @@ class GameManager:
         self.goals.append(Goal(1, random.randrange(15, self.window_width - 15),
                                random.randrange(15, self.sim_area_height - 15)))
         # temporary testing boid to setup controls, hitboxes, etc
-        for i in range(0, 16):
+        for i in range(0, 32):
             self.boids.append(Boid(i, random.randrange(0, self.window_width), random.randrange(1, self.sim_area_height),
                                    boid_height))
 

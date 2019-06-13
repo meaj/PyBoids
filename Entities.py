@@ -72,7 +72,19 @@ class Boid(Entity):
         return self.vel
 
     def update_velocity(self, val):
-        self.vel += val
+        val += self.vel
+        # Velocity limiting rules
+        if val.x >= 5:
+            val.x = 5
+        elif val.x <= -5:
+            val.x = -5
+
+        if val.y >= 5:
+            val.y = 5
+        elif val.y <= -5:
+            val.y = -5
+
+        self.vel = val
 
     def update_position(self, board_dims, boid_height):
         self.pos += self.vel
@@ -130,17 +142,17 @@ class Boid(Entity):
                 if self.is_object_visible(theta):
                     self.visible_boids.append((t_id, dist))
                 # If the boid is in our range of vision and close enough, add it to our connection list
-                if self.is_object_visible(theta) and dist <= 2500:
+                if self.is_object_visible(theta) and dist <= 3600:
                     self.connected_boids.append((t_id, dist))
                 # If the boid is too close, add it to our collision list and remove it from our connections if present
-                if dist < 25:
+                if dist < (self.height//2)**2:
                     self.collisions.append(temp_boid)
                     if (t_id, dist) in self.connected_boids:
                         self.connected_boids.remove((t_id, dist))
 
     # Adjusts the direction of the goal relative to the boid, provided it is visible
     def set_goal_dir(self, goal_pos):
-        if not self.touched_goal and self.calc_dist_to_object(goal_pos) < 100:
+        if not self.touched_goal and self.calc_dist_to_object(goal_pos) < 64:
             self.touched_goal = True
         else:
             self.touched_goal = False
