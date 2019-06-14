@@ -4,11 +4,11 @@ Pyboids
  * Copyright (c) 2019 Meaj
 """
 
-from GameManager import GameManager
+from SimulationManager import SimulationManager
 
 
 def main():
-    manager = GameManager()
+    manager = SimulationManager()
     manager.run_loop()
 
 

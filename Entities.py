@@ -19,16 +19,11 @@ class Entity:
         return self.entity_id
 
 
-class Goal(Entity):
-    def __init__(self, goal_id, x_pos, y_pos):
-        super().__init__(goal_id, x_pos, y_pos)
-
-
 class Boid(Entity):
 
     def __init__(self, boid_id, x, y, side_len):
         super().__init__(boid_id, x, y)
-        self.vel = Vector2D.Vector2D(0.5, 0.5)
+        self.vel = Vector2D.Vector2D()
         self.height = math.sqrt(3) * (side_len // 2)
 
         self.goal_dir = 0  # direction of nearest goal relative to boid
@@ -38,6 +33,7 @@ class Boid(Entity):
         self.visible_boids = []  # List of all visible boids, used to encourage flocking by showing possible options
         self.collisions = []  # list of boids we are too close to
         self.touched_goal = False  # used to alert manager when a coin is touched
+        self.nearest_goal = Entity(0, 0, 0)
         self.score = 0
 
     # Returns the magnitude of the velocity vector
@@ -86,19 +82,19 @@ class Boid(Entity):
 
         self.vel = val
 
-    def update_position(self, board_dims, boid_height):
+    def update_position(self, board_dims):
         self.pos += self.vel
         x = self.pos[0]
         y = self.pos[1]
-        if x >= board_dims[0] - boid_height // 2:
-            x = board_dims[0] - boid_height // 2
-        if x < boid_height // 2:
-            x = boid_height // 2
+        if x >= board_dims[0] - self.height // 2:
+            x = board_dims[0] - self.height // 2
+        if x < self.height // 2:
+            x = self.height // 2
         # Change our y position
-        if y >= board_dims[1] - 3 * boid_height // 4:
-            y = board_dims[1] - 3 * boid_height // 4
-        if y < 12 + boid_height // 2:  # 12 is the height of the text display at the top
-            y = 12 + boid_height // 2
+        if y >= board_dims[1] - 3 * self.height // 4:
+            y = board_dims[1] - 3 * self.height // 4
+        if y < 12 + self.height // 2:  # 12 is the height of the text display at the top
+            y = 12 + self.height // 2
         self.pos = Vector2D.Vector2D(x, y)
         self.my_dir = (180 + self.vel.argument()) % 360
 
@@ -108,7 +104,7 @@ class Boid(Entity):
 
     # Takes a tuple containing the position of an object and returns its angle relative to the boid's heading
     def calc_angle_from_pos(self, obj_pos):
-        temp_theta = math.atan2(self.pos[1] - obj_pos[1], self.pos[0] - obj_pos[0])
+        temp_theta = math.atan2(self.pos.y - obj_pos.y, self.pos.x - obj_pos.x)
         if temp_theta < 0:
             temp_theta = abs(temp_theta)
         else:
@@ -150,19 +146,27 @@ class Boid(Entity):
                     if (t_id, dist) in self.connected_boids:
                         self.connected_boids.remove((t_id, dist))
 
+    def find_nearest_goal(self, goal_list):
+        nearest = goal_list[-1]
+        for goal in goal_list:
+            if nearest is not goal and self.is_object_visible(self.calc_angle_from_pos(goal.get_position())):
+                if abs(goal.get_position() - self.pos) < abs(nearest.get_position() - self.pos):
+                    nearest = goal
+        self.nearest_goal = nearest
+
     # Adjusts the direction of the goal relative to the boid, provided it is visible
-    def set_goal_dir(self, goal_pos):
-        if not self.touched_goal and self.calc_dist_to_object(goal_pos) < 64:
+    def set_goal_dir(self):
+        if not self.touched_goal and self.calc_dist_to_object(self.nearest_goal.get_position()) < 64:
             self.touched_goal = True
         else:
             self.touched_goal = False
-        temp = self.calc_angle_from_pos(goal_pos)
+        temp = self.calc_angle_from_pos(self.nearest_goal.get_position())
         if self.is_object_visible(temp):
             self.goal_dir = temp  # goal is visible
         else:
             self.goal_dir = -1  # goal is not visible
 
-    def move(self, new_vel, new_dir, board_dims, boid_height):
+    def move(self, new_vel, new_dir, board_dims):
         # Change our heading
         if new_dir >= 360:
             new_dir -= 360
@@ -176,17 +180,17 @@ class Boid(Entity):
         # Change our x position
         x = self.pos[0]
         x -= new_vel * math.sin(math.radians(new_dir))  # x component of our movement
-        if x >= board_dims[0] - boid_height // 2:
-            x = board_dims[0] - boid_height // 2
-        if x < boid_height // 2:
-            x = boid_height // 2
+        if x >= board_dims[0] - self.height // 2:
+            x = board_dims[0] - self.height // 2
+        if x < self.height // 2:
+            x = self.height // 2
         # Change our y position
         y = self.pos[1]
         y -= new_vel * math.cos(math.radians(new_dir))  # y component of our movement
-        if y >= board_dims[1] - 3 * boid_height // 4:
-            y = board_dims[1] - 3 * boid_height // 4
-        if y < 12 + boid_height // 2:  # 12 is the height of the text display at the top
-            y = 12 + boid_height // 2
+        if y >= board_dims[1] - 3 * self.height // 4:
+            y = board_dims[1] - 3 * self.height // 4
+        if y < 12 + self.height // 2:  # 12 is the height of the text display at the top
+            y = 12 + self.height // 2
         self.pos = Vector2D.Vector2D(x, y)
 
 

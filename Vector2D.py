@@ -27,6 +27,12 @@ class Vector2D:
         elif type(other) == float or type(other) == int:
             return Vector2D(self.x / other, self.y / other)
 
+    def __rtruediv__(self, other):
+        if type(other) == Vector2D:
+            return other.x / self.x + other.y / self.y
+        elif type(other) == float or type(other) == int:
+            return Vector2D(other / self.x, other / self.y)
+
     def __abs__(self):
         return math.sqrt(self.x**2 + self.y**2)
 
@@ -48,7 +54,10 @@ class Vector2D:
             print("Index out of range")
 
     def argument(self):
-        arg = math.degrees(math.acos(Vector2D(0, 1)*self/self.__abs__()))
+        if self.__abs__() != 0:
+            arg = math.degrees(math.acos(Vector2D(0, 1)*self/self.__abs__()))
+        else:
+            arg = 0
         if self.x < 0:
             return 360 - arg
         else:

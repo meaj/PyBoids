@@ -4,9 +4,8 @@ Pyboids - GameManager
  * Copyright (c) 2019 Meaj
 """
 import pygame
-import math
 import random
-from Entities import Boid, Goal
+from Entities import Boid, Entity
 from FlockManager import FlockManager
 from ReynoldsControl import move_all_boids
 
@@ -14,7 +13,6 @@ from ReynoldsControl import move_all_boids
 # TODO: Draw a line representing the direction of the flock
 # TODO: Draw visible range of each boid for connection formation
 # TODO: Add button to toggle flock monitoring
-# TODO: Find and fix bug causing jerky diagonal movement
 
 
 RED = (255, 0, 0)
@@ -23,12 +21,12 @@ BLACK = (0, 0, 0)
 GOLD = (128, 128, 64)
 
 # Format for update is completed_release.goal_number.update_number
-VERSION = "0.3.3"
+VERSION = "0.3.4"
 
 
-class GameManager:
+class SimulationManager:
 
-    def __init__(self, window_width=980, sim_area_height=620, fps=60, boid_height=10):
+    def __init__(self, window_width=980, sim_area_height=620, fps=30, boid_height=10):
         # Initialize random and pygame
         random.seed()
         pygame.init()
@@ -52,12 +50,13 @@ class GameManager:
         self.boids = []
         self.flocks = FlockManager()
         # temporary goal deployment
-        self.goals.append(Goal(1, random.randrange(15, self.window_width - 15),
-                               random.randrange(15, self.sim_area_height - 15)))
+        for i in range(0, 5):
+            self.goals.append(Entity(i, random.randrange(15, self.window_width - 15),
+                                     random.randrange(15, self.sim_area_height - 15)))
         # temporary testing boid to setup controls, hitboxes, etc
         for i in range(0, 32):
-            self.boids.append(Boid(i, random.randrange(0, self.window_width), random.randrange(1, self.sim_area_height),
-                                   boid_height))
+            self.boids.append(Boid(i, random.randrange(15, self.window_width),
+                                   random.randrange(15, self.sim_area_height), boid_height))
 
         # Triangle test
         # self.boids.append(Boid(1, 315, 270, boid_height))
@@ -91,12 +90,12 @@ class GameManager:
                 print("{} died due to a collision!".format(boid.get_id()))
                 del boid
             elif boid.get_touched():
-                print("{} scored a point by touching a goal".format(boid.get_id()))
+                print("Boid {} scored a point by touching goal {}".format(boid.get_id(), boid.nearest_goal.get_id()))
                 self.flocks.update_flock_score(boid.get_id(), self.boids)
                 # temporary goal redeployment
-                del self.goals[0]
-                self.goals.append(Goal(1, random.randrange(15, self.window_width - 15),
-                                       random.randrange(15, self.sim_area_height - 15)))
+                g_id = boid.nearest_goal.get_id()
+                self.goals[g_id] = Entity(g_id, random.randrange(15, self.window_width - 15),
+                                          random.randrange(15, self.sim_area_height - 15))
 
     # Displays monitoring data at the top of the screen
     def display_monitoring(self, fps,  playtime, num_flocks):
@@ -189,28 +188,29 @@ class GameManager:
             ms = self.clock.tick(self.FPS)
             self.playtime += ms / 1000.0
             presses = pygame.key.get_pressed()
+            # Exit Game
             for event in pygame.event.get():
                 # Check for quit
                 if event.type == pygame.QUIT or presses[pygame.K_ESCAPE]:
                     run = False
-            # Use this during testing for key based control
-            # TODO: When converting to NN control, new_vel and new_dir will be calculated by each boid's network
-            # run, new_vel, new_dir = self.key_movement(presses, run, self.boids[0].get_speed(),
-            #                                         self.boids[0].get_direction())
             # Pull up debugger
             if presses[pygame.K_SPACE]:
                 import pdb
                 pdb.set_trace()
+            # Use this during testing for key based control
+            # run, new_vel, new_dir = self.key_movement(presses, run, self.boids[0].get_speed(),
+            #                                         self.boids[0].get_direction())
 
+            # TODO: When converting to NN control, velocity and direction will be calculated by each boid's network
             self.get_collisions()
-            move_all_boids(self.boids, self.flocks.get_flocks(), self.goals[0],
-                           (self.window_width, self.sim_area_height), self.boid_height)
+            move_all_boids(self.boids, self.flocks.get_flocks(), (self.window_width, self.sim_area_height),
+                           self.boid_height)
 
             for temp_boid in self.boids:
                 temp_boid.find_connections(self.boids)
-                # TODO: When converting to NN control, new_vel and new_dir will be calculated by each boid's network
-                temp_boid.set_goal_dir(self.goals[0].get_position())
-                self.draw_boid(temp_boid.get_position()[0], temp_boid.get_position()[1], temp_boid.get_height(),
+                temp_boid.find_nearest_goal(self.goals)
+                temp_boid.set_goal_dir()
+                self.draw_boid(temp_boid.get_position().x, temp_boid.get_position().y, temp_boid.get_height(),
                                temp_boid.my_dir, temp_boid.get_id())
 
             self.flocks.form_flocks(self.boids)
@@ -219,14 +219,14 @@ class GameManager:
                 num_flocks = len(self.flocks.get_flocks())
                 print("There are {} flocks: {}".format(num_flocks, self.flocks.get_flocks()))
 
-
             if len(self.boids) == 0:
                 print("This sim was run for {0:.2f} seconds before all boids died".format(self.playtime))
                 pygame.quit()
                 exit()
 
             self.display_monitoring(self.clock.get_fps(), self.playtime, len(self.flocks.get_flocks()))
-            self.draw_goal(self.goals[0].get_position(), 3)
+            for goal in self.goals:
+                self.draw_goal(goal.get_position(), 3)
             for centroid in self.flocks.get_centroids():
                 self.draw_centroid(centroid)
             self.display_flock_data()
