@@ -153,9 +153,6 @@ class Boid(Entity):
                 if abs(goal.get_position() - self.pos) < abs(nearest.get_position() - self.pos):
                     nearest = goal
         self.nearest_goal = nearest
-
-    # Adjusts the direction of the goal relative to the boid, provided it is visible
-    def set_goal_dir(self):
         if not self.touched_goal and self.calc_dist_to_object(self.nearest_goal.get_position()) < 64:
             self.touched_goal = True
         else:

@@ -25,6 +25,10 @@ def move_all_boids(boid_list, flock_list, board_dims, boid_height):
                 # Special rule to check if goal is visible
                 if boid.is_object_visible(boid.calc_angle_from_pos(boid.nearest_goal.get_position())):
                     v4 = tend_to_position(boid, boid.nearest_goal.get_position())
+                    if len(flock) == 1:
+                        v4 *= 8
+                    elif abs(boid.calc_dist_to_object(boid.nearest_goal.get_position())) < 4*boid_height:
+                        v4 *= 4
                 else:
                     v4 = Vector2D(random.randrange(0.0, 2.0), random.randrange(0.0, 2.0))
                 v5 = avoid_walls(boid, board_dims, boid_height)

@@ -11,11 +11,11 @@ This is a highly experimental project and contents may change suddenly.
 
 
 ### Roadmap
-0. Cleanup code and adopt best practices when possible
-1. ~~Build engine to display and move boids and determine what is a flock~~
-2. ~~Build monitoring system to display data about each flock~~
-3. ~~Implement Mr. Reynolds' version of boids using PyBoids engine~~
-<ol start = 4>
+<ol start = 0>
+	<li> Cleanup code and adopt best practices when possible</li>
+	<li><strike>Build engine to display and move boids and determine what is a flock</strike></li>
+	<li><strike>Build monitoring system to display data about each flock</strike></li>
+	<li><strike>Implement Mr. Reynolds' version of boids using PyBoids engine</strike></li>
     <li> Build wrapping needed to record generations of AI models and display Neural Networks and other data</li>
     <ol start = i>
         <li>Build system to allow each generation to be tested on the same permutation of random values</li>
@@ -29,10 +29,9 @@ This is a highly experimental project and contents may change suddenly.
 ### Contents
 * **PyBoids.py**: The driver for this project
 * **Entities.py**: This is the class that entities are instantiated from. Entities include boid objects and the goal tokens they search for.
+* **DisplayManager.py**: This controls the display of all components of the simulation.
 * **FlockManager.py**: This class controls the collections of boids that are able to interact with each other.
-* **SimulationManager.py**: This controls the display of all the boids as well as the other managers and simulation objects.
-
-
+* **SimulationManager.py**: This controls the other managers and simulation objects and serves to connect them.
 * **Vector2D.py**: This is the class that 2D vectors are instantiated from
 * **ReynoldsControl.py**: This contains methods to control boid movement based on those used in Craig Reynold's original simulation
 * **LICENSE**: This is the license for the project

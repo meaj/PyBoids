@@ -3,18 +3,19 @@ Pyboids - FlockManager
  * A class containing the definitions of the FlockManager object
  * Copyright (c) 2019 Meaj
 """
-
+from Vector2D import Vector2D
 
 class FlockManager:
 
     def __init__(self):
         # Set of flocks formed each frame by manager
-        self.flocks = []
+        self.flock_list = []
         # Data corresponding to each flock
         # These should always have the same order as flocks
         self.flock_centroids = []
         self.flock_thetas = []
         self.flock_goal_thetas = []
+        self.flock_velocities = []
         # This will need to be implemented
         self.flock_scores = [0]
         # These are currently unused, but would control the flock size
@@ -26,7 +27,7 @@ class FlockManager:
 
     # Getter functions that do what they say on the tin
     def get_flocks(self):
-        return self.flocks
+        return self.flock_list
 
     def get_centroids(self):
         return self.flock_centroids
@@ -40,10 +41,13 @@ class FlockManager:
     def get_goal_thetas(self):
         return self.flock_goal_thetas
 
+    def get_velocities(self):
+        return self.flock_velocities
+
     # Ensures that when a flock member collides with a goal, each member of the flock gets awarded some points
     def update_flock_score(self, boid, boids):
         # First find the relevant flock
-        for flock in self.flocks:
+        for flock in self.flock_list:
             award = len(flock)
             if boid in flock:
                 # If the flock is too big, it won't score, so we can break
@@ -69,12 +73,14 @@ class FlockManager:
         thetas = []
         scores = []
         goals = []
+        vels = []
         # Gather data for each flock
-        for flock in self.flocks:
+        for flock in self.flock_list:
             sum_x = 0
             sum_y = 0
             sum_theta = 0
             sum_goal_theta = 0
+            sum_vel = Vector2D(0, 0)
             score = 0
             # More nasty cross referencing, see update_flock_scores()
             for member in flock:
@@ -82,6 +88,7 @@ class FlockManager:
                     # Gather data for each boid
                     if boid.get_id() == member:
                         t = boid.get_position()
+                        sum_vel += boid.get_velocity()
                         sum_x += t[0]
                         sum_y += t[1]
                         sum_theta += boid.get_direction()
@@ -91,17 +98,19 @@ class FlockManager:
             cent.append((sum_x/len(flock), sum_y/len(flock)))  # just the average position of each boid
             thetas.append(sum_theta/len(flock))  # this does not seem right, but it works anyway ¯\_(ツ)_/¯
             goals.append(sum_goal_theta / len(flock))
+            vels.append(sum_vel/len(flock))
             scores.append(score)  # scores are aggregated from boids to account for changes in flock members
             # Clear everything to ensure no references to nonexistent flocks
             self.flock_centroids = cent
             self.flock_thetas = thetas
             self.flock_scores = scores
             self.flock_goal_thetas = goals
+            self.flock_velocities = vels
 
     # calculates the number of flocks and stores their members as a list of lists
     # When the boids move quickly, the flocks sometime do not make sense, this is being examined
     def form_flocks(self, boids):
-        self.flocks = []
+        self.flock_list = []
         flocks = []
         for boid in boids:
             # Extract all the boid IDs to the list of new connections, con
@@ -125,9 +134,9 @@ class FlockManager:
         # One final pass to remove duplicates and merge any lingering overlaps, may be superfluous
         for flock in flocks:
             ext = False
-            for final in self.flocks:
+            for final in self.flock_list:
                 if (not set(flock).isdisjoint(set(final))) or (not set(final).isdisjoint(set(flock))):
                     list(final).extend(set(flock).union(set(final)))
                     ext = True
-            if set(flock) not in self.flocks and not ext:
-                self.flocks.append(set(flock))
+            if set(flock) not in self.flock_list and not ext:
+                self.flock_list.append(set(flock))

@@ -1,6 +1,6 @@
 """
-Pyboids - GameManager
- * A class containing the definitions of the GameManager object
+Pyboids - SimulationManager
+ * A class containing the definitions of the SimulationManager object
  * Copyright (c) 2019 Meaj
 """
 import pygame
@@ -8,20 +8,15 @@ import random
 from Entities import Boid, Entity
 from FlockManager import FlockManager
 from ReynoldsControl import move_all_boids
+from DisplayManager import DisplayManager
 
-# TODO: adjust drawing methods to be more efficient and actually alpha the unused parts of their rects
-# TODO: Draw a line representing the direction of the flock
-# TODO: Draw visible range of each boid for connection formation
-# TODO: Add button to toggle flock monitoring
-
-
-RED = (255, 0, 0)
-GREEN = (0, 255, 0)
-BLACK = (0, 0, 0)
-GOLD = (128, 128, 64)
+# Game_state Definitions
+RUN = 1
+PAUSE = -1
+EXIT = 0
 
 # Format for update is completed_release.goal_number.update_number
-VERSION = "0.3.4"
+VERSION = "0.3.5"
 
 
 class SimulationManager:
@@ -36,111 +31,94 @@ class SimulationManager:
         self.window_width = window_width  # width of the window and simulation area
         self.sim_area_height = sim_area_height  # height of the simulation area
         self.window_height = sim_area_height + 15 * 10
-        self.screen = pygame.display.set_mode((self.window_width, self.window_height), pygame.DOUBLEBUF)
-        self.background = pygame.Surface(self.screen.get_size()).convert()
-        self.background.fill(BLACK)
-        self.surface = self.screen
+
         # Timing and monitoring data
         self.clock = pygame.time.Clock()
         self.FPS = fps
         self.playtime = 0.0
-        self.font = pygame.font.SysFont('mono', 12, bold=True)
-        # Object lists
-        self.goals = []
-        self.boids = []
-        self.flocks = FlockManager()
-        # temporary goal deployment
+        self.show_centroids = False
+
+        # Entity list declaration
+        self.goal_list = []
+        self.boid_list = []
+
+        # Manager creation
+        self.display_manager = DisplayManager(pygame, (self.window_width, self.window_height), sim_area_height)
+        self.flock_manager = FlockManager()
+
+        # Goal Deployment
         for i in range(0, 5):
-            self.goals.append(Entity(i, random.randrange(15, self.window_width - 15),
-                                     random.randrange(15, self.sim_area_height - 15)))
-        # temporary testing boid to setup controls, hitboxes, etc
+            self.goal_list.append(Entity(i, random.randrange(15, self.window_width - 15),
+                                         random.randrange(15, self.sim_area_height - 15)))
+        # Boid Deployment
         for i in range(0, 32):
-            self.boids.append(Boid(i, random.randrange(15, self.window_width),
-                                   random.randrange(15, self.sim_area_height), boid_height))
+            self.boid_list.append(Boid(i, random.randrange(15, self.window_width),
+                                       random.randrange(15, self.sim_area_height), boid_height))
 
-        # Triangle test
-        # self.boids.append(Boid(1, 315, 270, boid_height))
-        # self.boids.append(Boid(2, 300, 300, boid_height))
-        # self.boids.append(Boid(3, 330, 300, boid_height))
-        # self.boids.append(Boid(4, 345, 330, boid_height))
-        # self.boids.append(Boid(5, 315, 330, boid_height))
-        # self.boids.append(Boid(6, 285, 330, boid_height))
-        # Square test
-        # self.boids.append(Boid(1, 330, 330, boid_height))
-        # self.boids.append(Boid(2, 300, 300, boid_height))
-        # self.boids.append(Boid(3, 330, 300, boid_height))
-        # self.boids.append(Boid(4, 300, 330, boid_height))
+    # This is the fitness function we will use to determine the overall "score" of an iteration of the AIs
+    def fitness_function(self, score, survivors=None):
+        total = 0
+        if survivors:
+            for boid in survivors:
+                total += boid.get_score()
+            total /= len(survivors)
+        return total + score / len(self.boid_list)
 
-    def get_boid_by_id(self, boid_id):
-        for boid in self.boids:
-            if boid.get_id() == boid_id:
-                return boid
-
-    # removes boids that have collided and adds scores
+    # Removes boids that have collided and adds scores
     def get_collisions(self):
-        for boid in self.boids:
+        for boid in self.boid_list:
             col = boid.get_collisions()
             if col:
                 for c in col:
-                    if c in self.boids:
-                        self.boids.remove(c)
+                    if c in self.boid_list:
+                        self.boid_list.remove(c)
                     print("{} died due to a collision!".format(c.get_id()))
                     del c
-                self.boids.remove(boid)
+                self.boid_list.remove(boid)
                 print("{} died due to a collision!".format(boid.get_id()))
                 del boid
             elif boid.get_touched():
                 print("Boid {} scored a point by touching goal {}".format(boid.get_id(), boid.nearest_goal.get_id()))
-                self.flocks.update_flock_score(boid.get_id(), self.boids)
+                self.flock_manager.update_flock_score(boid.get_id(), self.boid_list)
                 # temporary goal redeployment
                 g_id = boid.nearest_goal.get_id()
-                self.goals[g_id] = Entity(g_id, random.randrange(15, self.window_width - 15),
-                                          random.randrange(15, self.sim_area_height - 15))
+                self.goal_list[g_id] = Entity(g_id, random.randrange(15, self.window_width - 15),
+                                              random.randrange(15, self.sim_area_height - 15))
 
-    # Displays monitoring data at the top of the screen
-    def display_monitoring(self, fps,  playtime, num_flocks):
-        text = "FPS: {:6.2f}{}PLAYTIME: {:6.2f}{}FLOCKS: {}".format(fps, " " * 5, playtime, " " * 5, num_flocks)
-        surface = self.font.render(text, True, (0, 255, 0))
-        self.screen.blit(surface, (0, 0))
+    def key_events(self, game_state):
+        # Default keyboard controls
+        presses = pygame.key.get_pressed()
+        # Exit game with escape or by clicking the close button
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT or presses[pygame.K_ESCAPE]:
+                print("game_state set to EXIT")
+                game_state = EXIT
+            # Pauses game with space
+            if presses[pygame.K_SPACE]:
+                game_state *= PAUSE
+                if game_state == PAUSE:
+                    print("game_state set to PAUSE")
+                else:
+                    print("game_state set to RUN")
+            # Toggle centroid data on or off
+            if presses[pygame.K_TAB]:
+                self.show_centroids = not self.show_centroids
+        # Pull up debugger with `
+        if presses[pygame.K_BACKQUOTE]:
+            import pdb
+            pdb.set_trace()
 
-    # Draws shapes representing goal objects
-    def draw_goal(self, pos, radius):
-        x = pos[0]
-        y = pos[1]
-        surface = pygame.Surface((2*radius, 2*radius))
-        surface.convert_alpha(surface)
-        surface.set_colorkey(BLACK)
-        pygame.draw.circle(surface, GOLD, (radius, radius), radius)
-        self.surface.blit(surface, (x, y))
-
-    # Draws shapes representing the boid objects
-    def draw_boid(self, x, y, height, angle, b_id):
-        points = [(int(height // 2), 0),
-                  (0, int(height)),
-                  (int(height), int(height))]
-        surface = pygame.Surface((height, height))
-        surface.convert_alpha(surface)
-        pygame.draw.polygon(surface, GREEN, points)
-        surface.set_colorkey(BLACK)
-        txt_surface = pygame.font.SysFont('mono', 10, bold=False).render(str(b_id), True, (0, 255, 0))
-        self.surface.blit(pygame.transform.rotozoom(surface, angle, 1), (x - height//2, y - height//2))
-        self.surface.blit(txt_surface, (x-2, y + 3 * height // 4))
-
-    def draw_centroid(self, pos, angle=90):
-        x = pos[0]
-        y = pos[1]
-        surface = pygame.Surface((6, 6))
-        surface.convert_alpha(surface)
-        surface.set_colorkey(BLACK)
-        pygame.draw.circle(surface, RED, (3, 3), 3)
-        self.surface.blit(surface, (x, y))
+        return game_state
 
     @staticmethod
-    def key_movement(presses, run, new_vel, new_dir):
+    # TODO: This needs to be updated to work with new vectors
+    def key_movement(presses, run, boid):
+        new_vel = boid.get_speed()
+        new_dir = boid.get_direction()
         for event in pygame.event.get():
             # Check for quit
             if event.type == pygame.QUIT or presses[pygame.K_ESCAPE]:
-                run = False
+                run = EXIT
         if presses[pygame.K_DOWN]:
             if new_vel <= 0.04:
                 new_vel = 0
@@ -159,83 +137,51 @@ class SimulationManager:
                 new_vel += 0.05
         return run, new_vel, new_dir
 
-    def display_flock_data(self):
-        flock_list = self.flocks.get_flocks()
-        flock_thetas = self.flocks.get_thetas()
-        flock_goals = self.flocks.get_goal_thetas()
-        flock_centroids = self.flocks.get_centroids()
-        flock_scores = self.flocks.get_scores()
-        monitor = pygame.Surface((self.window_width, self.window_height - self.sim_area_height))
-        monitor.blit(
-            self.font.render("Number  |     Centroids    |  Direction  |  Goal Direction  |  Score  |  Members", True,
-                             GREEN), (11, 0))
-
-        i = 0
-        for i in range(len(flock_list)):
-            cent = "{:3.2f}, {:3.2f}".format(flock_centroids[i][0], flock_centroids[i][1])
-            string = "{0:^6}{1:^5s}{2:^15}{1:^4s}{3:^10.2f}{1:^4s}{4:^14.2f}{1:^5s}{5:^6d}{1:^4s}{6:}"\
-                .format(i + 1, "|", cent, flock_thetas[i], flock_goals[i], flock_scores[i], flock_list[i])
-            monitor.blit(self.font.render(string, True, GREEN), (12, (i+1) * 13))
-            pygame.draw.line(monitor, GREEN, (0, (i+1) * 13), (self.window_width, (i + 1) * 13))
-        pygame.draw.line(monitor, GREEN, (0, (i + 2) * 13), (self.window_width, (i + 2) * 13))
-        self.screen.blit(monitor, (0, self.sim_area_height+1))
-
     # Game loop
     def run_loop(self):
         num_flocks = 0
-        run = True
-        while run:
-            ms = self.clock.tick(self.FPS)
-            self.playtime += ms / 1000.0
-            presses = pygame.key.get_pressed()
-            # Exit Game
-            for event in pygame.event.get():
-                # Check for quit
-                if event.type == pygame.QUIT or presses[pygame.K_ESCAPE]:
-                    run = False
-            # Pull up debugger
-            if presses[pygame.K_SPACE]:
-                import pdb
-                pdb.set_trace()
-            # Use this during testing for key based control
-            # run, new_vel, new_dir = self.key_movement(presses, run, self.boids[0].get_speed(),
-            #                                         self.boids[0].get_direction())
+        game_state = RUN
+        while game_state != EXIT:
+            # Get key presses/events
+            game_state = self.key_events(game_state)
+
+            # Timing calculations
+            if game_state == PAUSE:
+                self.clock.tick_busy_loop()
+                continue
+            self.playtime += self.clock.tick(self.FPS) / 1000.0
+
+            # Setup connections and look for goals
+            for temp_boid in self.boid_list:
+                temp_boid.find_connections(self.boid_list)
+                temp_boid.find_nearest_goal(self.goal_list)
+
+            # Look for all collisions and handle accordingly
+            self.get_collisions()
 
             # TODO: When converting to NN control, velocity and direction will be calculated by each boid's network
-            self.get_collisions()
-            move_all_boids(self.boids, self.flocks.get_flocks(), (self.window_width, self.sim_area_height),
+            # Key based control
+            # game_state, new_vel, new_dir = self.key_movement(presses, game_state, self.boids[0])
+            # Reynolds' control schema, tweaked to work with my boids
+            move_all_boids(self.boid_list, self.flock_manager.get_flocks(), (self.window_width, self.sim_area_height),
                            self.boid_height)
 
-            for temp_boid in self.boids:
-                temp_boid.find_connections(self.boids)
-                temp_boid.find_nearest_goal(self.goals)
-                temp_boid.set_goal_dir()
-                self.draw_boid(temp_boid.get_position().x, temp_boid.get_position().y, temp_boid.get_height(),
-                               temp_boid.my_dir, temp_boid.get_id())
+            # Flock formation and Flock Data calculations
+            self.flock_manager.form_flocks(self.boid_list)
+            self.flock_manager.calc_flock_data(self.boid_list)
+            if num_flocks != len(self.flock_manager.get_flocks()):
+                num_flocks = len(self.flock_manager.get_flocks())
+                print("There are {} flocks: {}".format(num_flocks, self.flock_manager.get_flocks()))
 
-            self.flocks.form_flocks(self.boids)
-            self.flocks.calc_flock_data(self.boids)
-            if num_flocks != len(self.flocks.get_flocks()):
-                num_flocks = len(self.flocks.get_flocks())
-                print("There are {} flocks: {}".format(num_flocks, self.flocks.get_flocks()))
-
-            if len(self.boids) == 0:
+            # Exits simulation when all boids are dead
+            if len(self.boid_list) == 0:
                 print("This sim was run for {0:.2f} seconds before all boids died".format(self.playtime))
                 pygame.quit()
                 exit()
 
-            self.display_monitoring(self.clock.get_fps(), self.playtime, len(self.flocks.get_flocks()))
-            for goal in self.goals:
-                self.draw_goal(goal.get_position(), 3)
-            for centroid in self.flocks.get_centroids():
-                self.draw_centroid(centroid)
-            self.display_flock_data()
-            # bottom line
-            pygame.draw.line(self.background, GREEN, (0, self.sim_area_height),
-                             (self.window_width, self.sim_area_height))
-            # top line
-            pygame.draw.line(self.background, GREEN, (0, 12), (self.window_width, 12))
-            pygame.display.flip()
-            self.screen.blit(self.background, (0, 0))
+            # Call our display functions
+            self.display_manager.draw_screen(self.clock, self.playtime, self.flock_manager,
+                                             self.boid_list, self.goal_list, self.show_centroids)
+
         pygame.quit()
         print("This sim was run for {0:.2f} seconds before yeeting".format(self.playtime))
