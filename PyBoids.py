@@ -4,7 +4,7 @@ Pyboids
  * Copyright (c) 2019 Meaj
 """
 
-from SimulationManager import SimulationManager
+from Managers.SimulationManager import SimulationManager
 
 
 def main():

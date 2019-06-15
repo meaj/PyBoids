@@ -3,7 +3,7 @@ Pyboids - FlockManager
  * A class containing the definitions of the FlockManager object
  * Copyright (c) 2019 Meaj
 """
-from Vector2D import Vector2D
+from Entities.Vector2D import Vector2D
 
 class FlockManager:
 

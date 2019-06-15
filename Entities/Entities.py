@@ -4,7 +4,7 @@ Pyboids - Entities
  * Copyright (c) 2019 Meaj
 """
 import math
-import Vector2D
+from Entities import Vector2D
 
 
 class Entity:

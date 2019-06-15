@@ -5,10 +5,10 @@ Pyboids - SimulationManager
 """
 import pygame
 import random
-from Entities import Boid, Entity
-from FlockManager import FlockManager
-from ReynoldsControl import move_all_boids
-from DisplayManager import DisplayManager
+from Entities.Entities import Boid, Entity
+from Managers.FlockManager import FlockManager
+from BoidControllers.ReynoldsControl import move_all_boids
+from Managers.DisplayManager import DisplayManager
 
 # Game_state Definitions
 RUN = 1
@@ -16,7 +16,7 @@ PAUSE = -1
 EXIT = 0
 
 # Format for update is completed_release.goal_number.update_number
-VERSION = "0.3.5"
+VERSION = "0.3.6"
 
 
 class SimulationManager:

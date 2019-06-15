@@ -3,7 +3,7 @@ Pyboids - ReynoldsControl
  * My implementation of the flocking algorithm devised by Craig Reynolds
  * Copyright (c) 2019 Meaj
 """
-from Vector2D import Vector2D
+from Entities.Vector2D import Vector2D
 import random
 
 
@@ -34,6 +34,7 @@ def move_all_boids(boid_list, flock_list, board_dims, boid_height):
                 v5 = avoid_walls(boid, board_dims, boid_height)
 
                 dv = v1 + v2 + v3 + v4 + v5
+                dv *= 1.1
 
                 boid.update_velocity(dv)
                 boid.update_position(board_dims)

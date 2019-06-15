@@ -3,6 +3,8 @@ Pyboids - DisplayManager
  * A class containing the definitions of the DisplayManager object, which controls displaying data visually
  * Copyright (c) 2019 Meaj
 """
+from math import radians
+
 # Color Definitions
 RED = (255, 0, 0)
 GREEN = (0, 255, 0)
@@ -10,7 +12,6 @@ BLACK = (0, 0, 0)
 GOLD = (128, 128, 64)
 
 # TODO: adjust drawing methods to be more efficient and actually alpha the unused parts of their rects
-# TODO: Draw visible range of each boid for connection formation
 
 
 class DisplayManager:
@@ -64,7 +65,11 @@ class DisplayManager:
         self.screen.blit(surface, (x, y))
 
     # Draws shapes representing the boid objects
-    def display_boid(self, x, y, height, angle, b_id):
+    def display_boid(self, boid, draw_details):
+        x = boid.get_position().x
+        y = boid.get_position().y
+        height = boid.get_height()
+        angle = boid.my_dir
         points = [(int(height // 2), 0),
                   (0, int(height)),
                   (int(height), int(height))]
@@ -72,9 +77,13 @@ class DisplayManager:
         surface.convert_alpha(surface)
         self.pygame.draw.polygon(surface, GREEN, points)
         surface.set_colorkey(BLACK)
-        txt_surface = self.pygame.font.SysFont('mono', 10, bold=False).render(str(b_id), True, (0, 255, 0))
         self.screen.blit(self.pygame.transform.rotozoom(surface, angle, 1), (x - height // 2, y - height // 2))
-        self.screen.blit(txt_surface, (x - 2, y + 3 * height // 4))
+        if draw_details:
+            b_id = boid.get_id()
+            txt_surface = self.pygame.font.SysFont('mono', 10, bold=False).render(str(b_id), True, (0, 255, 0))
+            self.pygame.draw.arc(self.background, GOLD, [x - 30, y - 30, 60, 60],
+                                 radians(angle - 135 + 90), radians(angle + 135 + 90))
+            self.screen.blit(txt_surface, (x - 2, y + 3 * height // 4))
 
     # Draws shapes representing the centroids of the flocks of boid objects as well as the velocity of the flocks
     def display_flock_centroid_vectors(self, pos, angle):
@@ -88,17 +97,17 @@ class DisplayManager:
         self.screen.blit(surface, (x, y))
 
     # Calls the relevant display functions once per frame
-    def draw_screen(self, clock, playtime, flocks, boids, goals, draw_centroids=False):
+    def draw_screen(self, clock, playtime, flocks, boids, goals, draw_details=False):
         # Clear the screen
         self.background.fill(BLACK)
         # Draw the monitoring at the top of the screen
         self.display_simulation_overview(clock.get_fps(), playtime, len(flocks.get_flocks()))
         # Draw objects in the simulation area
         for boid in boids:
-            self.display_boid(boid.get_position().x, boid.get_position().y, boid.get_height(), boid.my_dir, boid.get_id())
+            self.display_boid(boid, draw_details)
         for goal in goals:
             self.display_goal(goal.get_position(), 3)
-        if draw_centroids:
+        if draw_details:
             idx = 0
             for centroid in flocks.get_centroids():
                 self.display_flock_centroid_vectors(centroid, flocks.get_velocities()[idx])

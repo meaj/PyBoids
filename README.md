@@ -28,12 +28,9 @@ This is a highly experimental project and contents may change suddenly.
 
 ### Contents
 * **PyBoids.py**: The driver for this project
-* **Entities.py**: This is the class that entities are instantiated from. Entities include boid objects and the goal tokens they search for.
-* **DisplayManager.py**: This controls the display of all components of the simulation.
-* **FlockManager.py**: This class controls the collections of boids that are able to interact with each other.
-* **SimulationManager.py**: This controls the other managers and simulation objects and serves to connect them.
-* **Vector2D.py**: This is the class that 2D vectors are instantiated from
-* **ReynoldsControl.py**: This contains methods to control boid movement based on those used in Craig Reynold's original simulation
+* **Entities**: This directory contains the classes that entities are instantiated from. Entities include boid objects and the goal tokens they search for.
+* **Managers**: This directory contains the classes that manage entities, output to screen, and call the appropriate boid controllers
+* **BoidControllers**: This directory contains the classes that control boid movement for various simulations
 * **LICENSE**: This is the license for the project
 
 ### License
