@@ -8,19 +8,22 @@ import random
 from Entities.Entities import Boid, Entity
 from Managers.FlockManager import FlockManager
 from BoidControllers.ReynoldsControl import move_all_boids
+from BoidControllers.GeneticReynoldsControl import move_all_boids_genetic, ReynoldsGeneticAlgorithm
 from Managers.DisplayManager import DisplayManager
 
 # Game_state Definitions
 RUN = 1
 PAUSE = -1
 EXIT = 0
+EVALUATE = 2
 
 # Format for update is completed_release.goal_number.update_number
-VERSION = "0.3.6"
+VERSION = "0.4.0"
 
+# TODO: Allow user to set number simulation iterations (continuous or N)
+# TODO: Allow user to choose which simulation will run on startup instead of by editing code
 
 class SimulationManager:
-
     def __init__(self, window_width=980, sim_area_height=620, fps=30, boid_height=10):
         # Initialize random and pygame
         random.seed()
@@ -56,16 +59,27 @@ class SimulationManager:
                                        random.randrange(15, self.sim_area_height), boid_height))
 
     # This is the fitness function we will use to determine the overall "score" of an iteration of the AIs
-    def fitness_function(self, score, survivors=None):
+    @staticmethod
+    def fitness_function(score, survivors=None):
         total = 0
         if survivors:
             for boid in survivors:
                 total += boid.get_score()
             total /= len(survivors)
-        return total + score / len(self.boid_list)
+        return total + score / 32
+
+    # TODO: Finish implementing the generation controls here
+    #  We need to run each iteration, animate, evaluate, store the fitness, id, and generation,
+    #  and run the algorithm after each generation completes
+    def run_generations(self):
+        genetic_algorithm = ReynoldsGeneticAlgorithm(1, 4, 6)
+        while genetic_algorithm.cur_generation != genetic_algorithm.max_generation:
+            for iteration in genetic_algorithm.get_iteration_list():
+                for boid in self.boid_list:
+                    boid.set_divergence(iteration.generate_divergence_value())
 
     # Removes boids that have collided and adds scores
-    def get_collisions(self):
+    def get_collisions(self, sim_score):
         for boid in self.boid_list:
             col = boid.get_collisions()
             if col:
@@ -79,14 +93,14 @@ class SimulationManager:
                 del boid
             elif boid.get_touched():
                 print("Boid {} scored a point by touching goal {}".format(boid.get_id(), boid.nearest_goal.get_id()))
-                self.flock_manager.update_flock_score(boid.get_id(), self.boid_list)
+                sim_score += self.flock_manager.update_flock_score(boid.get_id(), self.boid_list)
                 # temporary goal redeployment
                 g_id = boid.nearest_goal.get_id()
                 self.goal_list[g_id] = Entity(g_id, random.randrange(15, self.window_width - 15),
                                               random.randrange(15, self.sim_area_height - 15))
 
+    # Check for keyboard input
     def key_events(self, game_state):
-        # Default keyboard controls
         presses = pygame.key.get_pressed()
         # Exit game with escape or by clicking the close button
         for event in pygame.event.get():
@@ -112,6 +126,7 @@ class SimulationManager:
 
     @staticmethod
     # TODO: This needs to be updated to work with new vectors
+    # Default keyboard controls
     def key_movement(presses, run, boid):
         new_vel = boid.get_speed()
         new_dir = boid.get_direction()
@@ -141,7 +156,11 @@ class SimulationManager:
     def run_loop(self):
         num_flocks = 0
         game_state = RUN
+        sim_score = 0
         while game_state != EXIT:
+            if self.playtime > 600:
+                break
+
             # Get key presses/events
             game_state = self.key_events(game_state)
 
@@ -157,14 +176,18 @@ class SimulationManager:
                 temp_boid.find_nearest_goal(self.goal_list)
 
             # Look for all collisions and handle accordingly
-            self.get_collisions()
+            self.get_collisions(sim_score)
 
             # TODO: When converting to NN control, velocity and direction will be calculated by each boid's network
             # Key based control
             # game_state, new_vel, new_dir = self.key_movement(presses, game_state, self.boids[0])
             # Reynolds' control schema, tweaked to work with my boids
-            move_all_boids(self.boid_list, self.flock_manager.get_flocks(), (self.window_width, self.sim_area_height),
-                           self.boid_height)
+            # move_all_boids(self.boid_list, self.flock_manager.get_flocks(), (self.window_width, self.sim_area_height),
+            #               self.boid_height)
+            # Test control for the genetic algorithm. This will have to be moved within
+            # self.run_generations along with most of the run_loop method
+            move_all_boids_genetic(self.boid_list, self.flock_manager.get_flocks(),
+                                   (self.window_width, self.sim_area_height), self.boid_height)
 
             # Flock formation and Flock Data calculations
             self.flock_manager.form_flocks(self.boid_list)
@@ -175,6 +198,7 @@ class SimulationManager:
 
             # Exits simulation when all boids are dead
             if len(self.boid_list) == 0:
+                print("Fitness was: {}".format(self.fitness_function(sim_score)))
                 print("This sim was run for {0:.2f} seconds before all boids died".format(self.playtime))
                 pygame.quit()
                 exit()
@@ -183,5 +207,6 @@ class SimulationManager:
             self.display_manager.draw_screen(self.clock, self.playtime, self.flock_manager,
                                              self.boid_list, self.goal_list, self.show_centroids)
 
+        print("Fitness was: {}".format(self.fitness_function(sim_score, self.boid_list)))
         pygame.quit()
         print("This sim was run for {0:.2f} seconds before yeeting".format(self.playtime))

@@ -5,8 +5,8 @@ Pyboids - FlockManager
 """
 from Entities.Vector2D import Vector2D
 
-class FlockManager:
 
+class FlockManager:
     def __init__(self):
         # Set of flocks formed each frame by manager
         self.flock_list = []
@@ -46,6 +46,7 @@ class FlockManager:
 
     # Ensures that when a flock member collides with a goal, each member of the flock gets awarded some points
     def update_flock_score(self, boid, boids):
+        total = 0
         # First find the relevant flock
         for flock in self.flock_list:
             award = len(flock)
@@ -64,8 +65,11 @@ class FlockManager:
                             # size, whichever is smaller. We also check to make sure the awards are in bounds
                             if 0 <= award < self.pref_flock_members:
                                 b.increment_score(award)
+                                total += award
                             elif self.pref_flock_members <= award < self.max_flock_members:
                                 b.increment_score(self.pref_flock_members)
+                                total += self.pref_flock_members
+        return total
 
     # Calculates the position of centroids, the value of average thetas, and the scores for each flock
     def calc_flock_data(self, boids):

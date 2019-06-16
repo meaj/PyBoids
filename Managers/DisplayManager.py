@@ -12,6 +12,7 @@ BLACK = (0, 0, 0)
 GOLD = (128, 128, 64)
 
 # TODO: adjust drawing methods to be more efficient and actually alpha the unused parts of their rects
+# TODO: Add ability to toggle flock data display at bottom
 
 
 class DisplayManager:

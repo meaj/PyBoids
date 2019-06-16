@@ -21,10 +21,11 @@ class Entity:
 
 class Boid(Entity):
 
-    def __init__(self, boid_id, x, y, side_len):
+    def __init__(self, boid_id, x, y, side_len, divergence_value=1):
         super().__init__(boid_id, x, y)
         self.vel = Vector2D.Vector2D()
         self.height = math.sqrt(3) * (side_len // 2)
+        self.divergence = divergence_value
 
         self.goal_dir = 0  # direction of nearest goal relative to boid
         self.my_dir = 0  # current heading of the boid
@@ -66,6 +67,12 @@ class Boid(Entity):
 
     def get_velocity(self):
         return self.vel
+
+    def get_divergence(self):
+        return self.divergence
+
+    def set_divergence(self, val):
+        self.divergence = val
 
     def update_velocity(self, val):
         val += self.vel
