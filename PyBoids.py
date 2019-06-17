@@ -9,7 +9,8 @@ from Managers.SimulationManager import SimulationManager
 
 def main():
     manager = SimulationManager()
-    manager.run_loop()
+    manager.run_generations()
+    # manager.run_loop()
 
 
 main()

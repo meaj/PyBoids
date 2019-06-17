@@ -10,7 +10,6 @@ import statistics
 from Entities.Vector2D import Vector2D
 
 # TODO: Allow user to set the number of generations to breed or to breed until stopped
-# TODO: Implement method to store genes and fitness of each boid iteration for genetic culling
 
 
 class ReynoldsChromosome:
@@ -74,7 +73,7 @@ class ReynoldsIteration:
         self.performance = value
 
     def generate_divergence_value(self):
-        return random.randrange(-self.genome[5], self.genome[5])
+        return random.randrange(int(-self.genome[5]*100), int(self.genome[5]*100))/100
 
     def get_genome(self):
         return self.genome
@@ -115,6 +114,7 @@ class ReynoldsGeneticAlgorithm:
 
         for iteration in self.iteration_list:
             if iteration.performance >= median and len(self.survivors) < self.max_iterations/2:
+                print("Gen {} Iter {} survived and will breed".format(self.cur_generation, iteration.get_id()))
                 self.survivors.append(iteration)
             if len(self.survivors) == self.max_iterations/2:
                 break
@@ -156,10 +156,8 @@ class ReynoldsGeneticAlgorithm:
         offspring_4 = ReynoldsIteration(self.cur_generation, iteration_2.get_id()+1, offspring_genome_4)
         return offspring_1, offspring_2, offspring_3, offspring_4
 
-    def advance_generation(self, fitness_function):
+    def advance_generation(self):
         next_gen = []
-        for iteration in self.iteration_list:
-            iteration.update_performance(fitness_function(iteration.get_genome()))
 
         self.cull_bottom_half()
         random.shuffle(self.survivors)
@@ -198,9 +196,9 @@ def move_all_boids_genetic(boid_list, flock_list, board_dims, boid_height, itera
                 if boid.is_object_visible(boid.calc_angle_from_pos(boid.nearest_goal.get_position())):
                     v4 = tend_to_position(boid, boid.nearest_goal.get_position()) * chromosome.goal_seeking_gene
                     if len(flock) == 1:
-                        v4 *= chromosome.goal_seeking_gene * 16
+                        v4 *= 8
                     if abs(boid.calc_dist_to_object(boid.nearest_goal.get_position())) < 4*boid_height:
-                        v4 *= chromosome.goal_seeking_gene * 32
+                        v4 *= 4
                 else:
                     v4 = Vector2D(random.randrange(0.0, 2.0), random.randrange(0.0, 2.0))
                 v5 = avoid_walls(boid, board_dims, boid_height) * chromosome.wall_avoidance_gene
