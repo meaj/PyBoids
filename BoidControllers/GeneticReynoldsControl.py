@@ -81,6 +81,12 @@ class ReynoldsIteration:
     def get_id(self):
         return self.iteration_number
 
+    def get_performance(self):
+        return self.performance
+
+    def set_id(self, value):
+        self.iteration_number = value
+
 
 class ReynoldsGeneticAlgorithm:
     def __init__(self, generation_number, iteration_size, mutation_rate):
@@ -159,6 +165,7 @@ class ReynoldsGeneticAlgorithm:
     def advance_generation(self):
         next_gen = []
 
+        # Kill off the least performing chromosomes and randomly breed the survivors in pairs
         self.cull_bottom_half()
         random.shuffle(self.survivors)
 
@@ -166,11 +173,8 @@ class ReynoldsGeneticAlgorithm:
             parent_1 = self.survivors.pop()
             parent_2 = self.survivors.pop()
             child_list = self.breed_iterations(parent_1, parent_2)
-            idx = 1
             for child in child_list:
-                child.iteration_number = idx
                 next_gen.append(child)
-                idx += 1
 
         self.iteration_list = next_gen
         self.cur_generation += 1

@@ -18,7 +18,7 @@ EXIT = 0
 EVALUATE = 2
 
 # Format for update is completed_release.goal_number.update_number
-VERSION = "0.4.1"
+VERSION = "0.4.2"
 
 # TODO: Allow user to set number simulation iterations (continuous or N)
 # TODO: Allow user to choose which simulation will run on startup instead of by editing code
@@ -60,13 +60,13 @@ class SimulationManager:
                                        random.randrange(15, self.sim_area_height), boid_height))
 
     # This is the fitness function we will use to determine the overall "score" of an iteration of the AIs
-    @staticmethod
-    def fitness_function(score, survivors=None):
-        total = 0
+    def fitness_function(self, score, survivors=None):
+        # If there are no survivors, the bonus is 0
+        bonus = 0
         if survivors:
             for boid in survivors:
-                total += boid.get_score()
-        return total + score / 32
+                bonus += boid.get_score() + 1  # Each survivor gets one point plus their score added to the bonus
+        return (bonus + score) / self.playtime  # In the end we should end up with the total score per second
 
     # Removes boids that have collided and adds scores
     def get_collisions(self, sim_score):
@@ -88,6 +88,7 @@ class SimulationManager:
                 g_id = boid.nearest_goal.get_id()
                 self.goal_list[g_id] = Entity(g_id, random.randrange(15, self.window_width - 15),
                                               random.randrange(15, self.sim_area_height - 15))
+        return sim_score
 
     # Check for keyboard input
     def key_events(self, game_state):
@@ -149,7 +150,7 @@ class SimulationManager:
         sim_score = 0
         fitness = 0
         while game_state != EXIT:
-            if self.playtime > 300:
+            if self.playtime > 120:
                 fitness = self.fitness_function(sim_score, self.boid_list)
                 print("Fitness was: {}".format(fitness))
                 print("This sim was run for {0:.2f} seconds before finishing".format(self.playtime))
@@ -171,7 +172,7 @@ class SimulationManager:
                 temp_boid.find_nearest_goal(self.goal_list)
 
             # Look for all collisions and handle accordingly
-            self.get_collisions(sim_score)
+            sim_score = self.get_collisions(sim_score)
 
             move_all_boids_genetic(self.boid_list, self.flock_manager.get_flocks(),
                                    (self.window_width, self.sim_area_height), self.boid_height, genome)
@@ -199,11 +200,13 @@ class SimulationManager:
     def run_generations(self):
         # Create our algorithm manager with the number of generations from 0 to n,
         # the number of iterations per generation, and the mutation rate
-        genetic_algorithm = ReynoldsGeneticAlgorithm(24, 12, 6)
+        genetic_algorithm = ReynoldsGeneticAlgorithm(24, 12, 24)
         # Loop through each generation
         while genetic_algorithm.cur_generation <= genetic_algorithm.max_generation:
             # Loop through each iteration
+            idx = 1
             for iteration in genetic_algorithm.get_iteration_list():
+                iteration.set_id(idx)
                 print("Generation {} Iteration {}".format(genetic_algorithm.cur_generation, iteration.get_id()))
                 # Create new population for each generation
                 self.boid_list = []
@@ -212,16 +215,30 @@ class SimulationManager:
                                                random.randrange(15, self.sim_area_height), self.boid_height))
                 fitness = self.iteration_loop(iteration.get_genome())
                 iteration.update_performance(fitness)
-                # Store genetic data (currently unused but I want more monitoring
-                genetic_algorithm.genetic_history.append([genetic_algorithm.cur_generation, iteration, fitness])
+                idx += 1
+            # Find best iteration from each generation
+            best_score = -1
+            best_iteration = genetic_algorithm.get_iteration_list()[0].get_genome()
+            for iteration in genetic_algorithm.get_iteration_list():
+                tst = iteration.get_performance()
+                if tst > best_score:
+                    best_score = tst
+                    best_iteration = iteration.get_genome()
+            # Store genetic data for best in each generation
+            genetic_algorithm.genetic_history.append([genetic_algorithm.cur_generation, best_iteration, best_score])
             genetic_algorithm.advance_generation()
         # Determine best performing genome and display it
-        best = genetic_algorithm.iteration_list[0]
+        best_iteration = genetic_algorithm.iteration_list[0]
         for iteration in genetic_algorithm.get_iteration_list():
-            if iteration.performance > best.performance:
-                best = iteration
+            if iteration.performance > best_iteration.performance:
+                best_iteration = iteration
         print("The best genome evolved after {} generations was {}".format(genetic_algorithm.max_generation,
-                                                                           best.get_genome()))
+                                                                           best_iteration.get_genome()))
+        gene_history = open("best_performers.txt", "w")
+        gene_history.write("Generation;Chromosome;Performance\n")
+        for entry in genetic_algorithm.genetic_history:
+            gene_history.write("{};{};{}\n".format(entry[0], entry[1], entry[2]))
+        gene_history.close()
 
     # Game loop
     def run_loop(self):
@@ -256,7 +273,7 @@ class SimulationManager:
             # move_all_boids(self.boid_list, self.flock_manager.get_flocks(), (self.window_width, self.sim_area_height),
             #               self.boid_height)
             # Test control for the genetic algorithm
-            genome = ReynoldsChromosome(1, 1/4, 1/8, 1/128, 1, 1.1)
+            genome = ReynoldsChromosome(-2.26, 5.04, 2.6, 0.63, 1.33, -6.2)
             move_all_boids_genetic(self.boid_list, self.flock_manager.get_flocks(),
                                    (self.window_width, self.sim_area_height), self.boid_height, genome)
 
