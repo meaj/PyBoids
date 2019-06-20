@@ -8,7 +8,7 @@ from Managers.SimulationManager import SimulationManager
 
 
 def main():
-    manager = SimulationManager()
+    manager = SimulationManager(visual_mode=True)
     # manager.run_generations()
     manager.run_loop()
 

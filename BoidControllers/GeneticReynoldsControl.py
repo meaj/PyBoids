@@ -100,12 +100,12 @@ class ReynoldsGeneticAlgorithm:
 
         for i in range(self.max_iterations):
             self.iteration_list.append(ReynoldsIteration(self.cur_generation, i+1,
-                                                         ReynoldsChromosome(random.randrange(-1000, 1000)/100,
-                                                                            random.randrange(-1000, 1000)/100,
-                                                                            random.randrange(-1000, 1000)/100,
-                                                                            random.randrange(-1000, 1000)/100,
-                                                                            random.randrange(-1000, 1000)/100,
-                                                                            random.randrange(-1000, 1000)/100)))
+                                                         ReynoldsChromosome(random.randrange(-1000, 1000)/1000,
+                                                                            random.randrange(-1000, 1000)/1000,
+                                                                            random.randrange(-1000, 1000)/1000,
+                                                                            random.randrange(-1000, 1000)/1000,
+                                                                            random.randrange(-1000, 1000)/1000,
+                                                                            random.randrange(-1000, 1000)/1000)))
 
     def get_iteration_list(self):
         return self.iteration_list
@@ -138,7 +138,7 @@ class ReynoldsGeneticAlgorithm:
         for idx in range(0, len(chromosome)):
             chance = random.randrange(1, self.mutation_rate + 1, 1)
             if chance == self.mutation_rate:
-                chromosome[idx] = random.randrange(-1000, 1000)/100
+                chromosome[idx] = random.randrange(-1000, 1000)/1000
             idx += 1
         return chromosome
 
@@ -199,10 +199,8 @@ def move_all_boids_genetic(boid_list, flock_list, board_dims, boid_height, itera
                 # Special rule to check if goal is visible
                 if boid.is_object_visible(boid.calc_angle_from_pos(boid.nearest_goal.get_position())):
                     v4 = tend_to_position(boid, boid.nearest_goal.get_position()) * chromosome.goal_seeking_gene
-                    if len(flock) == 1:
-                        v4 *= 8
                     if abs(boid.calc_dist_to_object(boid.nearest_goal.get_position())) < 4*boid_height:
-                        v4 *= 4
+                        v4 *= 2
                 else:
                     v4 = Vector2D(random.randrange(0.0, 2.0), random.randrange(0.0, 2.0))
                 v5 = avoid_walls(boid, board_dims, boid_height) * chromosome.wall_avoidance_gene

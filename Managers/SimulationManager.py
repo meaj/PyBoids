@@ -25,7 +25,7 @@ VERSION = "0.4.2"
 
 
 class SimulationManager:
-    def __init__(self, window_width=980, sim_area_height=620, fps=30, boid_height=10):
+    def __init__(self, window_width=980, sim_area_height=620, fps=30, boid_height=10, visual_mode=True):
         # Initialize random and pygame
         random.seed()
         pygame.init()
@@ -47,7 +47,10 @@ class SimulationManager:
         self.boid_list = []
 
         # Manager creation
-        self.display_manager = DisplayManager(pygame, (self.window_width, self.window_height), sim_area_height)
+        if visual_mode:
+            self.display_manager = DisplayManager(pygame, (self.window_width, self.window_height), sim_area_height)
+        else:
+            self.display_manager = None
         self.flock_manager = FlockManager()
 
         # Goal Deployment
@@ -60,6 +63,7 @@ class SimulationManager:
                                        random.randrange(15, self.sim_area_height), boid_height))
 
     # This is the fitness function we will use to determine the overall "score" of an iteration of the AIs
+    # http://filipposanfilippo.inspitivity.com/publications/Optimisation_of_Boids_Swarm_Model_Based_on_Genetic_Algorithm_and_Particle_Swarm_Optimisation_Algorithm_Comparative_Study.pdf
     def fitness_function(self, score, survivors=None):
         # If there are no survivors, the bonus is 0
         bonus = 0
@@ -158,7 +162,7 @@ class SimulationManager:
                 continue
 
             # Get key presses/events
-            game_state = self.key_events(game_state)
+            #game_state = self.key_events(game_state)
 
             # Timing calculations
             if game_state == PAUSE:
@@ -192,15 +196,16 @@ class SimulationManager:
                 continue
 
             # Call our display functions
-            self.display_manager.draw_screen(self.clock, self.playtime, self.flock_manager,
-                                             self.boid_list, self.goal_list, self.show_centroids)
+            if self.display_manager:
+                self.display_manager.draw_screen(self.clock, self.playtime, self.flock_manager,
+                                                self.boid_list, self.goal_list, self.show_centroids)
         return fitness
 
     # Controls the Genetic Algorithm
     def run_generations(self):
         # Create our algorithm manager with the number of generations from 0 to n,
         # the number of iterations per generation, and the mutation rate
-        genetic_algorithm = ReynoldsGeneticAlgorithm(24, 12, 24)
+        genetic_algorithm = ReynoldsGeneticAlgorithm(48, 12, 24)
         # Loop through each generation
         while genetic_algorithm.cur_generation <= genetic_algorithm.max_generation:
             # Loop through each iteration
@@ -246,7 +251,7 @@ class SimulationManager:
         game_state = RUN
         sim_score = 0
         while game_state != EXIT:
-            if self.playtime > 20:
+            if self.playtime > 600:
                 break
 
             # Get key presses/events
@@ -273,7 +278,7 @@ class SimulationManager:
             # move_all_boids(self.boid_list, self.flock_manager.get_flocks(), (self.window_width, self.sim_area_height),
             #               self.boid_height)
             # Test control for the genetic algorithm
-            genome = ReynoldsChromosome(-2.26, 5.04, 2.6, 0.63, 1.33, -6.2)
+            genome = ReynoldsChromosome(.759, .985, .597, .103, -.199, -.555)
             move_all_boids_genetic(self.boid_list, self.flock_manager.get_flocks(),
                                    (self.window_width, self.sim_area_height), self.boid_height, genome)
 
@@ -292,8 +297,9 @@ class SimulationManager:
                 exit()
 
             # Call our display functions
-            self.display_manager.draw_screen(self.clock, self.playtime, self.flock_manager,
-                                             self.boid_list, self.goal_list, self.show_centroids)
+            if self.display_manager:
+                self.display_manager.draw_screen(self.clock, self.playtime, self.flock_manager,
+                                                 self.boid_list, self.goal_list, self.show_centroids)
 
         print("Fitness was: {}".format(self.fitness_function(sim_score, self.boid_list)))
         pygame.quit()
