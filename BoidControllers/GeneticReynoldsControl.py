@@ -126,6 +126,30 @@ class ReynoldsGeneticAlgorithm:
                 break
 
     @staticmethod
+    # Similar to crossover_genes, but allows each potential swap to be a average of the parent's genes
+    def gene_commingling(chromosome_1, chromosome_2):
+        overlap = random.randrange(1, len(chromosome_1) + 1)
+        for i in range(0, overlap):
+            beta = random.randrange(11)/10
+            t_gene = (beta * chromosome_1[i]) + ((1-beta) * chromosome_2[i])
+            sign = -1 ** random.randrange(0, 1)
+            chromosome_1[i] += t_gene * sign
+            chromosome_2[i] -= t_gene * sign
+        return chromosome_1, chromosome_2
+
+    @staticmethod
+    # Similar to crossover_genes, but allows each potential swap to be skipped as well
+    def binary_choice_crossover_genes(chromosome_1, chromosome_2):
+        overlap = random.randrange(1, len(chromosome_1)+1)
+        for i in range(0, overlap):
+            if random.randrange(0, 1) == 1:
+                t_gene = chromosome_1[i]
+                chromosome_1[i] = chromosome_2[i]
+                chromosome_2[i] = t_gene
+        return chromosome_1, chromosome_2
+
+    @staticmethod
+    # Allows for the genes of two parents to be swapped up to a random point. All genes up to that point are swapped
     def crossover_genes(chromosome_1, chromosome_2):
         overlap = random.randrange(1, len(chromosome_1)+1)
         for i in range(0, overlap):
@@ -134,6 +158,7 @@ class ReynoldsGeneticAlgorithm:
             chromosome_2[i] = t_gene
         return chromosome_1, chromosome_2
 
+    # Allows for individual genes in the chromosome to be completely altered within the range of -0.999 to 0.999
     def mutate_genes(self, chromosome):
         for idx in range(0, len(chromosome)):
             chance = random.randrange(1, self.mutation_rate + 1, 1)
@@ -145,6 +170,7 @@ class ReynoldsGeneticAlgorithm:
     # Creates 4 children from 2 parents
     def breed_iterations(self, iteration_1, iteration_2):
         # Crossover
+        # copy is use to ensure that the list values are exchanged and not the list values themselves
         offspring_genome_1, offspring_genome_2 = self.crossover_genes(copy.copy(iteration_2.get_genome()),
                                                                       copy.copy(iteration_1.get_genome()))
         offspring_genome_3, offspring_genome_4 = self.crossover_genes(copy.copy(iteration_1.get_genome()),
@@ -156,10 +182,10 @@ class ReynoldsGeneticAlgorithm:
         offspring_genome_4 = self.mutate_genes(offspring_genome_4)
 
         # Iteration creation
-        offspring_1 = ReynoldsIteration(self.cur_generation, iteration_1.get_id(), offspring_genome_1)
-        offspring_2 = ReynoldsIteration(self.cur_generation, iteration_2.get_id(), offspring_genome_2)
-        offspring_3 = ReynoldsIteration(self.cur_generation, iteration_1.get_id()+1, offspring_genome_3)
-        offspring_4 = ReynoldsIteration(self.cur_generation, iteration_2.get_id()+1, offspring_genome_4)
+        offspring_1 = ReynoldsIteration(self.cur_generation, 0, offspring_genome_1)
+        offspring_2 = ReynoldsIteration(self.cur_generation, 0, offspring_genome_2)
+        offspring_3 = ReynoldsIteration(self.cur_generation, 0, offspring_genome_3)
+        offspring_4 = ReynoldsIteration(self.cur_generation, 0, offspring_genome_4)
         return offspring_1, offspring_2, offspring_3, offspring_4
 
     def advance_generation(self):
