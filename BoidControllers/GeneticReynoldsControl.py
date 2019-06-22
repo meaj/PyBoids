@@ -168,13 +168,24 @@ class ReynoldsGeneticAlgorithm:
         return chromosome
 
     # Creates 4 children from 2 parents
-    def breed_iterations(self, iteration_1, iteration_2):
+    def breed_iterations(self, iteration_1, iteration_2, crossover_type=0):
         # Crossover
         # copy is use to ensure that the list values are exchanged and not the list values themselves
-        offspring_genome_1, offspring_genome_2 = self.crossover_genes(copy.copy(iteration_2.get_genome()),
-                                                                      copy.copy(iteration_1.get_genome()))
-        offspring_genome_3, offspring_genome_4 = self.crossover_genes(copy.copy(iteration_1.get_genome()),
-                                                                      copy.copy(iteration_2.get_genome()))
+        if crossover_type == 1:
+            offspring_genome_1, offspring_genome_2 = self.binary_choice_crossover_genes(
+                copy.copy(iteration_2.get_genome()), copy.copy(iteration_1.get_genome()))
+            offspring_genome_3, offspring_genome_4 = self.binary_choice_crossover_genes(
+                copy.copy(iteration_1.get_genome()), copy.copy(iteration_2.get_genome()))
+        elif crossover_type == 2:
+            offspring_genome_1, offspring_genome_2 = self.gene_commingling(copy.copy(iteration_2.get_genome()),
+                                                                           copy.copy(iteration_1.get_genome()))
+            offspring_genome_3, offspring_genome_4 = self.gene_commingling(copy.copy(iteration_1.get_genome()),
+                                                                           copy.copy(iteration_2.get_genome()))
+        else:
+            offspring_genome_1, offspring_genome_2 = self.crossover_genes(copy.copy(iteration_2.get_genome()),
+                                                                          copy.copy(iteration_1.get_genome()))
+            offspring_genome_3, offspring_genome_4 = self.crossover_genes(copy.copy(iteration_1.get_genome()),
+                                                                          copy.copy(iteration_2.get_genome()))
         # Mutations
         offspring_genome_1 = self.mutate_genes(offspring_genome_1)
         offspring_genome_2 = self.mutate_genes(offspring_genome_2)
@@ -188,7 +199,7 @@ class ReynoldsGeneticAlgorithm:
         offspring_4 = ReynoldsIteration(self.cur_generation, 0, offspring_genome_4)
         return offspring_1, offspring_2, offspring_3, offspring_4
 
-    def advance_generation(self):
+    def advance_generation(self, crossover_type=0):
         next_gen = []
 
         # Kill off the least performing chromosomes and randomly breed the survivors in pairs
@@ -198,7 +209,7 @@ class ReynoldsGeneticAlgorithm:
         while self.survivors:
             parent_1 = self.survivors.pop()
             parent_2 = self.survivors.pop()
-            child_list = self.breed_iterations(parent_1, parent_2)
+            child_list = self.breed_iterations(parent_1, parent_2, crossover_type)
             for child in child_list:
                 next_gen.append(child)
 

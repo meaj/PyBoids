@@ -18,7 +18,7 @@ EXIT = 0
 EVALUATE = 2
 
 # Format for update is completed_release.goal_number.update_number
-VERSION = "0.4.2"
+VERSION = "0.4.5"
 
 # TODO: Allow user to set number simulation iterations (continuous or N)
 # TODO: Allow user to choose which simulation will run on startup instead of by editing code
@@ -154,7 +154,7 @@ class SimulationManager:
         sim_score = 0
         fitness = 0
         while game_state != EXIT:
-            if self.playtime > 120:
+            if self.playtime > 60:
                 fitness = self.fitness_function(sim_score, self.boid_list)
                 print("Fitness was: {}".format(fitness))
                 print("This sim was run for {0:.2f} seconds before finishing".format(self.playtime))
@@ -162,7 +162,8 @@ class SimulationManager:
                 continue
 
             # Get key presses/events
-            #game_state = self.key_events(game_state)
+            if self.display_manager:
+                game_state = self.key_events(game_state)
 
             # Timing calculations
             if game_state == PAUSE:
@@ -198,14 +199,14 @@ class SimulationManager:
             # Call our display functions
             if self.display_manager:
                 self.display_manager.draw_screen(self.clock, self.playtime, self.flock_manager,
-                                                self.boid_list, self.goal_list, self.show_centroids)
+                                                 self.boid_list, self.goal_list, self.show_centroids)
         return fitness
 
     # Controls the Genetic Algorithm
-    def run_generations(self):
+    def run_generations(self, crossover_type=0):
         # Create our algorithm manager with the number of generations from 0 to n,
         # the number of iterations per generation, and the mutation rate
-        genetic_algorithm = ReynoldsGeneticAlgorithm(48, 12, 24)
+        genetic_algorithm = ReynoldsGeneticAlgorithm(12, 12, 24)
         # Loop through each generation
         while genetic_algorithm.cur_generation <= genetic_algorithm.max_generation:
             # Loop through each iteration
@@ -231,7 +232,7 @@ class SimulationManager:
                     best_iteration = iteration.get_genome()
             # Store genetic data for best in each generation
             genetic_algorithm.genetic_history.append([genetic_algorithm.cur_generation, best_iteration, best_score])
-            genetic_algorithm.advance_generation()
+            genetic_algorithm.advance_generation(crossover_type)
         # Determine best performing genome and display it
         best_iteration = genetic_algorithm.iteration_list[0]
         for iteration in genetic_algorithm.get_iteration_list():

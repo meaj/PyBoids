@@ -6,6 +6,8 @@ The goal of this project is to produce flocking simulations with A.I. algorithms
 These simulations will then be compared to my implementation of the model devised by Mr. Reynolds.
 This is a highly experimental project and contents may change suddenly.
 
+More information regarding using the genetic algorithm to optimize the boids simulation can be found [here](http://filipposanfilippo.inspitivity.com/publications/Optimisation_of_Boids_Swarm_Model_Based_on_Genetic_Algorithm_and_Particle_Swarm_Optimisation_Algorithm_Comparative_Study.pdf).
+
 ### Prerequisites
 * **pygame**: Used for displaying the simulation
 
