@@ -130,8 +130,48 @@ class ReynoldsGeneticAlgorithm:
     def gene_commingling(chromosome_1, chromosome_2):
         overlap = random.randrange(1, len(chromosome_1) + 1)
         for i in range(0, overlap):
+            beta = random.randrange(11) / 10
+            t_gene = (beta * chromosome_1[i]) + ((1 - beta) * chromosome_2[i])
+            sign = -1 ** random.randrange(0, 1)
+            chromosome_1[i] = t_gene * sign
+            chromosome_2[i] = t_gene * sign
+        return chromosome_1, chromosome_2
+
+    @staticmethod
+    # Similar to crossover_genes, but allows each potential swap to be a average of the parent's genes
+    def alternating_gene_commingling(chromosome_1, chromosome_2):
+        overlap = random.randrange(1, len(chromosome_1) + 1)
+        for i in range(0, overlap):
+            beta = random.randrange(11) / 10
+            t_gene = (beta * chromosome_1[i]) + ((1 - beta) * chromosome_2[i])
+            sign = -1 ** random.randrange(0, 1)
+            chromosome_1[i] = t_gene * sign
+            chromosome_2[i] = t_gene * -sign
+        return chromosome_1, chromosome_2
+
+    @staticmethod
+    # Similar to crossover_genes, but allows each potential swap to be a average of the parent's genes
+    def bounded_gene_commingling(chromosome_1, chromosome_2):
+        overlap = random.randrange(1, len(chromosome_1) + 1)
+        for i in range(0, overlap):
             beta = random.randrange(11)/10
             t_gene = (beta * chromosome_1[i]) + ((1-beta) * chromosome_2[i])
+            sign = -1 ** random.randrange(0, 1)
+            chromosome_1[i] += t_gene * sign
+            while abs(chromosome_1[i]) > 1:
+                chromosome_1[i] /= 10
+            chromosome_2[i] -= t_gene * sign
+            while abs(chromosome_2[i]) > 1:
+                chromosome_2[i] /= 10
+        return chromosome_1, chromosome_2
+
+    @staticmethod
+    # Similar to crossover_genes, but allows each potential swap to be a average of the parent's genes
+    def unbounded_gene_commingling(chromosome_1, chromosome_2):
+        overlap = random.randrange(1, len(chromosome_1) + 1)
+        for i in range(0, overlap):
+            beta = random.randrange(11) / 10
+            t_gene = (beta * chromosome_1[i]) + ((1 - beta) * chromosome_2[i])
             sign = -1 ** random.randrange(0, 1)
             chromosome_1[i] += t_gene * sign
             chromosome_2[i] -= t_gene * sign
@@ -177,10 +217,25 @@ class ReynoldsGeneticAlgorithm:
             offspring_genome_3, offspring_genome_4 = self.binary_choice_crossover_genes(
                 copy.copy(iteration_1.get_genome()), copy.copy(iteration_2.get_genome()))
         elif crossover_type == 2:
-            offspring_genome_1, offspring_genome_2 = self.gene_commingling(copy.copy(iteration_2.get_genome()),
-                                                                           copy.copy(iteration_1.get_genome()))
-            offspring_genome_3, offspring_genome_4 = self.gene_commingling(copy.copy(iteration_1.get_genome()),
-                                                                           copy.copy(iteration_2.get_genome()))
+            offspring_genome_1, offspring_genome_2 = self.unbounded_gene_commingling(
+                copy.copy(iteration_2.get_genome()), copy.copy(iteration_1.get_genome()))
+            offspring_genome_3, offspring_genome_4 = self.unbounded_gene_commingling(
+                copy.copy(iteration_1.get_genome()), copy.copy(iteration_2.get_genome()))
+        elif crossover_type == 3:
+            offspring_genome_1, offspring_genome_2 = self.bounded_gene_commingling(
+                copy.copy(iteration_2.get_genome()), copy.copy(iteration_1.get_genome()))
+            offspring_genome_3, offspring_genome_4 = self.bounded_gene_commingling(
+                copy.copy(iteration_1.get_genome()), copy.copy(iteration_2.get_genome()))
+        elif crossover_type == 4:
+            offspring_genome_1, offspring_genome_2 = self.alternating_gene_commingling(
+                copy.copy(iteration_2.get_genome()), copy.copy(iteration_1.get_genome()))
+            offspring_genome_3, offspring_genome_4 = self.alternating_gene_commingling(
+                copy.copy(iteration_1.get_genome()), copy.copy(iteration_2.get_genome()))
+        elif crossover_type == 5:
+            offspring_genome_1, offspring_genome_2 = self.gene_commingling(
+                copy.copy(iteration_2.get_genome()), copy.copy(iteration_1.get_genome()))
+            offspring_genome_3, offspring_genome_4 = self.gene_commingling(
+                copy.copy(iteration_1.get_genome()), copy.copy(iteration_2.get_genome()))
         else:
             offspring_genome_1, offspring_genome_2 = self.crossover_genes(copy.copy(iteration_2.get_genome()),
                                                                           copy.copy(iteration_1.get_genome()))
