@@ -23,19 +23,22 @@ class Boid(Entity):
 
     def __init__(self, boid_id, x, y, side_len, divergence_value=1):
         super().__init__(boid_id, x, y)
-        self.vel = Vector2D.Vector2D()
-        self.height = math.sqrt(3) * (side_len // 2)
-        self.divergence = divergence_value
-
-        self.goal_dir = 0  # direction of nearest goal relative to boid
+        self.height = math.sqrt(3) * (side_len // 2)  # used in display calculations
+        self.vel = Vector2D.Vector2D()  # current velocity of the boid
         self.my_dir = 0  # current heading of the boid
+        self.divergence = divergence_value  # currently unused, but would account for random movement between boids
 
         self.connected_boids = []  # list of all visible boids in range, their ids, and positions used to form flocks
         self.visible_boids = []  # List of all visible boids, used to encourage flocking by showing possible options
         self.collisions = []  # list of boids we are too close to
+        
         self.touched_goal = False  # used to alert manager when a coin is touched
-        self.nearest_goal = Entity(0, 0, 0)
-        self.score = 0
+        self.nearest_goal = Entity(0, 0, 0)  # used in boid movement and flock formation
+        self.goal_dir = 0  # direction of nearest goal relative to boid
+        
+        self.score = 0  # used as part of evaluating the fitness of the model
+        self.cost = 0  # used as part of evaluating the fitness of the model
+        self.live_time = 0  # used as part of evaluating the fitness of the model
 
     # Returns the magnitude of the velocity vector
     def get_speed(self):
@@ -71,6 +74,12 @@ class Boid(Entity):
     def get_divergence(self):
         return self.divergence
 
+    def get_live_time(self):
+        return self.live_time
+
+    def get_cost(self):
+        return self.cost
+
     def set_divergence(self, val):
         self.divergence = val
 
@@ -89,10 +98,12 @@ class Boid(Entity):
 
         self.vel = val
 
+    # Move the boid on the simulation area
     def update_position(self, board_dims):
         self.pos += self.vel
         x = self.pos[0]
         y = self.pos[1]
+        # Change our x position
         if x >= board_dims[0] - self.height // 2:
             x = board_dims[0] - self.height // 2
         if x < self.height // 2:
@@ -108,6 +119,23 @@ class Boid(Entity):
     # Increments the score by the passed value or 1 by default
     def increment_score(self, val=1):
         self.score += val
+
+    """
+    # This is largely pseudocode until I can figure out how to pass the flock data in effectively. I may need to readjust the class
+    def update_cost(self, flock)
+        self.cost += self.my_dir - flock.dir
+        self.cost += self.my_dir - flock.goal_dir
+        dist_center = abs(self.pos - flock.centroid)
+        # too_close needs to be set to the distance at which boids begin to avoid each other
+        # too_far should also be added for readablity and easy modification
+        if dist_center < too_close:
+            for other in flock:
+                boid.cost += dist_center * ((abs(boid.pos - other.pos) - too_close)**2)/too_close**2			
+                
+        else if dist_center > too_close:
+            for other in flock:
+                boid.cost += dist_center * ((abs(boid.pos - other.pos) - too_close)**2)/dist_center - too_close**2
+    """
 
     # Takes a tuple containing the position of an object and returns its angle relative to the boid's heading
     def calc_angle_from_pos(self, obj_pos):
@@ -153,6 +181,7 @@ class Boid(Entity):
                     if (t_id, dist) in self.connected_boids:
                         self.connected_boids.remove((t_id, dist))
 
+    # Finds the nearest goal and sets touched_goal to true when appropriate
     def find_nearest_goal(self, goal_list):
         nearest = goal_list[-1]
         for goal in goal_list:
@@ -170,6 +199,7 @@ class Boid(Entity):
         else:
             self.goal_dir = -1  # goal is not visible
 
+    # Old movement function used by keyboard controller, needs adjustment
     def move(self, new_vel, new_dir, board_dims):
         # Change our heading
         if new_dir >= 360:

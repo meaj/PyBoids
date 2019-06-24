@@ -87,6 +87,7 @@ class FlockManager:
             sum_vel = Vector2D(0, 0)
             score = 0
             # More nasty cross referencing, see update_flock_scores()
+            visible_goals = 0
             for member in flock:
                 for boid in boids:
                     # Gather data for each boid
@@ -97,11 +98,13 @@ class FlockManager:
                         sum_y += t[1]
                         sum_theta += boid.get_direction()
                         score += boid.get_score()
-                        sum_goal_theta += boid.get_goal_dir()
+                        if boid.get_goal_dir() != -1:
+                            sum_goal_theta += boid.get_goal_dir()
+                            visible_goals += 1
             # Append each new value so that the indexes for the data match those of the flocks
             cent.append((sum_x/len(flock), sum_y/len(flock)))  # just the average position of each boid
             thetas.append(sum_theta/len(flock))  # this does not seem right, but it works anyway ¯\_(ツ)_/¯
-            goals.append(sum_goal_theta / len(flock))
+            goals.append(sum_goal_theta / visible_goals)
             vels.append(sum_vel/len(flock))
             scores.append(score)  # scores are aggregated from boids to account for changes in flock members
             # Clear everything to ensure no references to nonexistent flocks

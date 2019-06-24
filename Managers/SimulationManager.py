@@ -205,8 +205,8 @@ class SimulationManager:
     # Controls the Genetic Algorithm
     def run_generations(self, crossover_type=0):
         # Create our algorithm manager with the number of generations from 0 to n,
-        # the number of iterations per generation, and the mutation rate
-        genetic_algorithm = ReynoldsGeneticAlgorithm(12, 12, 24)
+        # the number of iterations per generation, and the mutation rate denominator
+        genetic_algorithm = ReynoldsGeneticAlgorithm(24, 12, 100)
         # Loop through each generation
         while genetic_algorithm.cur_generation <= genetic_algorithm.max_generation:
             # Loop through each iteration
@@ -240,7 +240,7 @@ class SimulationManager:
                 best_iteration = iteration
         print("The best genome evolved after {} generations was {}".format(genetic_algorithm.max_generation,
                                                                            best_iteration.get_genome()))
-        gene_history = open("best_performers.txt", "w")
+        gene_history = open("best_performers_method_{}.txt".format(crossover_type), "w")
         gene_history.write("Generation;Chromosome;Performance\n")
         for entry in genetic_algorithm.genetic_history:
             gene_history.write("{};{};{}\n".format(entry[0], entry[1], entry[2]))

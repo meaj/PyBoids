@@ -100,12 +100,12 @@ class ReynoldsGeneticAlgorithm:
 
         for i in range(self.max_iterations):
             self.iteration_list.append(ReynoldsIteration(self.cur_generation, i+1,
-                                                         ReynoldsChromosome(random.randrange(-1000, 1000)/1000,
-                                                                            random.randrange(-1000, 1000)/1000,
-                                                                            random.randrange(-1000, 1000)/1000,
-                                                                            random.randrange(-1000, 1000)/1000,
-                                                                            random.randrange(-1000, 1000)/1000,
-                                                                            random.randrange(-1000, 1000)/1000)))
+                                                         ReynoldsChromosome(random.uniform(-1, 1),
+                                                                            random.uniform(-1, 1),
+                                                                            random.uniform(-1, 1),
+                                                                            random.uniform(-1, 1),
+                                                                            random.uniform(-1, 1),
+                                                                            random.uniform(-1, 1))))
 
     def get_iteration_list(self):
         return self.iteration_list
@@ -130,11 +130,10 @@ class ReynoldsGeneticAlgorithm:
     def gene_commingling(chromosome_1, chromosome_2):
         overlap = random.randrange(1, len(chromosome_1) + 1)
         for i in range(0, overlap):
-            beta = random.randrange(11) / 10
+            beta = random.random()
             t_gene = (beta * chromosome_1[i]) + ((1 - beta) * chromosome_2[i])
-            sign = -1 ** random.randrange(0, 1)
-            chromosome_1[i] = t_gene * sign
-            chromosome_2[i] = t_gene * sign
+            chromosome_1[i] = t_gene
+            chromosome_2[i] = t_gene
         return chromosome_1, chromosome_2
 
     @staticmethod
@@ -142,7 +141,7 @@ class ReynoldsGeneticAlgorithm:
     def alternating_gene_commingling(chromosome_1, chromosome_2):
         overlap = random.randrange(1, len(chromosome_1) + 1)
         for i in range(0, overlap):
-            beta = random.randrange(11) / 10
+            beta = random.random()
             t_gene = (beta * chromosome_1[i]) + ((1 - beta) * chromosome_2[i])
             sign = -1 ** random.randrange(0, 1)
             chromosome_1[i] = t_gene * sign
@@ -154,15 +153,19 @@ class ReynoldsGeneticAlgorithm:
     def bounded_gene_commingling(chromosome_1, chromosome_2):
         overlap = random.randrange(1, len(chromosome_1) + 1)
         for i in range(0, overlap):
-            beta = random.randrange(11)/10
+            beta = random.random()
             t_gene = (beta * chromosome_1[i]) + ((1-beta) * chromosome_2[i])
             sign = -1 ** random.randrange(0, 1)
             chromosome_1[i] += t_gene * sign
-            while abs(chromosome_1[i]) > 1:
-                chromosome_1[i] /= 10
+            while chromosome_1[i] > 1:
+                chromosome_1[i] -= 1
+            while chromosome_2[i] < -1:
+                chromosome_2[i] += 1
             chromosome_2[i] -= t_gene * sign
-            while abs(chromosome_2[i]) > 1:
-                chromosome_2[i] /= 10
+            while chromosome_2[i] > 1:
+                chromosome_2[i] -= 1
+            while chromosome_2[i] < -1:
+                chromosome_2[i] += 1
         return chromosome_1, chromosome_2
 
     @staticmethod
@@ -170,7 +173,7 @@ class ReynoldsGeneticAlgorithm:
     def unbounded_gene_commingling(chromosome_1, chromosome_2):
         overlap = random.randrange(1, len(chromosome_1) + 1)
         for i in range(0, overlap):
-            beta = random.randrange(11) / 10
+            beta = random.random()
             t_gene = (beta * chromosome_1[i]) + ((1 - beta) * chromosome_2[i])
             sign = -1 ** random.randrange(0, 1)
             chromosome_1[i] += t_gene * sign
