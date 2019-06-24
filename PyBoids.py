@@ -9,11 +9,12 @@ from Managers.SimulationManager import SimulationManager
 
 def main():
 
-    for i in range(3, 4):
-        manager = SimulationManager(visual_mode=True)
-        manager.run_generations(crossover_type=i)
-        del manager
-    # manager.run_loop()
+    #for i in range(0, 0):
+    #    manager = SimulationManager(visual_mode=True)
+    #    manager.run_generations(crossover_type=i)
+    #    del manager
+    manager = SimulationManager(visual_mode=True)
+    manager.run_loop()
 
 
 main()

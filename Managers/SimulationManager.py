@@ -18,7 +18,7 @@ EXIT = 0
 EVALUATE = 2
 
 # Format for update is completed_release.goal_number.update_number
-VERSION = "0.4.5"
+VERSION = "0.4.8"
 
 # TODO: Allow user to set number simulation iterations (continuous or N)
 # TODO: Allow user to choose which simulation will run on startup instead of by editing code
@@ -79,9 +79,11 @@ class SimulationManager:
             if col:
                 for c in col:
                     if c in self.boid_list:
+                        sim_score -= c.get_cost() / c.get_live_time()
                         self.boid_list.remove(c)
                     # print("{} died due to a collision!".format(c.get_id()))
                     del c
+                sim_score -= boid.get_cost() / boid.get_live_time()
                 self.boid_list.remove(boid)
                 # print("{} died due to a collision!".format(boid.get_id()))
                 del boid
@@ -155,6 +157,8 @@ class SimulationManager:
         fitness = 0
         while game_state != EXIT:
             if self.playtime > 60:
+                for boid in self.boid_list:
+                    sim_score -= boid.get_cost() / boid.get_live_time()
                 fitness = self.fitness_function(sim_score, self.boid_list)
                 print("Fitness was: {}".format(fitness))
                 print("This sim was run for {0:.2f} seconds before finishing".format(self.playtime))
@@ -179,8 +183,9 @@ class SimulationManager:
             # Look for all collisions and handle accordingly
             sim_score = self.get_collisions(sim_score)
 
-            move_all_boids_genetic(self.boid_list, self.flock_manager.get_flocks(),
-                                   (self.window_width, self.sim_area_height), self.boid_height, genome)
+            move_all_boids_genetic(self.boid_list, self.flock_manager,
+                                   (self.window_width, self.sim_area_height), self.playtime, genome)
+
 
             # Flock formation and Flock Data calculations
             self.flock_manager.form_flocks(self.boid_list)
@@ -200,6 +205,7 @@ class SimulationManager:
             if self.display_manager:
                 self.display_manager.draw_screen(self.clock, self.playtime, self.flock_manager,
                                                  self.boid_list, self.goal_list, self.show_centroids)
+
         return fitness
 
     # Controls the Genetic Algorithm
@@ -252,7 +258,7 @@ class SimulationManager:
         game_state = RUN
         sim_score = 0
         while game_state != EXIT:
-            if self.playtime > 600:
+            if self.playtime > 60:
                 break
 
             # Get key presses/events
@@ -279,9 +285,13 @@ class SimulationManager:
             # move_all_boids(self.boid_list, self.flock_manager.get_flocks(), (self.window_width, self.sim_area_height),
             #               self.boid_height)
             # Test control for the genetic algorithm
-            genome = ReynoldsChromosome(.759, .985, .597, .103, -.199, -.555)
-            move_all_boids_genetic(self.boid_list, self.flock_manager.get_flocks(),
-                                   (self.window_width, self.sim_area_height), self.boid_height, genome)
+            # Good test values:
+            # .759, .985, .597, .103, -.199, -.555
+            # 0.578, 0.7909894024404782, 0.917, 0.20089257410211592, -0.3285011686127677, -0.9371975566340713
+            # 1, .25, 1/8, 1/128, 1, 1.1
+            genome = ReynoldsChromosome(1, .25, 1/8, 1/128, 1, 1.1)
+            move_all_boids_genetic(self.boid_list, self.flock_manager,
+                                   (self.window_width, self.sim_area_height), self.playtime, genome)
 
             # Flock formation and Flock Data calculations
             self.flock_manager.form_flocks(self.boid_list)

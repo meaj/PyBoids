@@ -82,7 +82,7 @@ class DisplayManager:
         if draw_details:
             b_id = boid.get_id()
             txt_surface = self.pygame.font.SysFont('mono', 10, bold=False).render(str(b_id), True, (0, 255, 0))
-            self.pygame.draw.arc(self.background, GOLD, [x - 30, y - 30, 60, 60],
+            self.pygame.draw.arc(self.background, GOLD, [x - boid.too_close, y - boid.too_close, 60, 60],
                                  radians(angle - 135 + 90), radians(angle + 135 + 90))
             self.screen.blit(txt_surface, (x - 2, y + 3 * height // 4))
 

@@ -102,9 +102,12 @@ class FlockManager:
                             sum_goal_theta += boid.get_goal_dir()
                             visible_goals += 1
             # Append each new value so that the indexes for the data match those of the flocks
-            cent.append((sum_x/len(flock), sum_y/len(flock)))  # just the average position of each boid
+            cent.append(Vector2D(sum_x/len(flock), sum_y/len(flock)))  # just the average position of each boid
             thetas.append(sum_theta/len(flock))  # this does not seem right, but it works anyway ¯\_(ツ)_/¯
-            goals.append(sum_goal_theta / visible_goals)
+            if visible_goals != 0:
+                goals.append(sum_goal_theta / visible_goals)
+            else:
+                goals.append(-1)
             vels.append(sum_vel/len(flock))
             scores.append(score)  # scores are aggregated from boids to account for changes in flock members
             # Clear everything to ensure no references to nonexistent flocks

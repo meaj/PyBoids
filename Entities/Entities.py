@@ -24,6 +24,8 @@ class Boid(Entity):
     def __init__(self, boid_id, x, y, side_len, divergence_value=1):
         super().__init__(boid_id, x, y)
         self.height = math.sqrt(3) * (side_len // 2)  # used in display calculations
+        self.too_close = self.height * 3  # used to determine when boids should avoid each other
+        self.too_far = (self.height ** 2) * 100  # used to determine when the boids are too far to flock
         self.vel = Vector2D.Vector2D()  # current velocity of the boid
         self.my_dir = 0  # current heading of the boid
         self.divergence = divergence_value  # currently unused, but would account for random movement between boids
@@ -120,22 +122,25 @@ class Boid(Entity):
     def increment_score(self, val=1):
         self.score += val
 
-    """
-    # This is largely pseudocode until I can figure out how to pass the flock data in effectively. I may need to readjust the class
-    def update_cost(self, flock)
-        self.cost += self.my_dir - flock.dir
-        self.cost += self.my_dir - flock.goal_dir
-        dist_center = abs(self.pos - flock.centroid)
-        # too_close needs to be set to the distance at which boids begin to avoid each other
-        # too_far should also be added for readablity and easy modification
-        if dist_center < too_close:
+    def update_cost(self, boid_list, flock, flock_dir, flock_goal_dir, flock_centroid, playtime):
+        self.cost += self.my_dir - flock_dir
+        self.cost += self.my_dir - flock_goal_dir
+
+        dist_center = abs(self.pos - flock_centroid)
+
+        if dist_center <= self.too_close:
             for other in flock:
-                boid.cost += dist_center * ((abs(boid.pos - other.pos) - too_close)**2)/too_close**2			
+                for boid in boid_list:
+                    if boid.get_id() == other:
+                        self.cost += dist_center * ((abs(self.pos - boid.pos) - self.too_close)**2)/self.too_close**2
                 
-        else if dist_center > too_close:
+        elif dist_center > self.too_close:
             for other in flock:
-                boid.cost += dist_center * ((abs(boid.pos - other.pos) - too_close)**2)/dist_center - too_close**2
-    """
+                for boid in boid_list:
+                    if boid.get_id() == other:
+                        self.cost += dist_center * ((abs(self.pos - boid.pos)
+                                                    - self.too_close)**2)/dist_center - self.too_close**2
+        self.live_time = playtime
 
     # Takes a tuple containing the position of an object and returns its angle relative to the boid's heading
     def calc_angle_from_pos(self, obj_pos):
@@ -173,10 +178,10 @@ class Boid(Entity):
                 if self.is_object_visible(theta):
                     self.visible_boids.append((t_id, dist))
                 # If the boid is in our range of vision and close enough, add it to our connection list
-                if self.is_object_visible(theta) and dist <= 3600:
+                if self.is_object_visible(theta) and dist <= self.too_far:
                     self.connected_boids.append((t_id, dist))
                 # If the boid is too close, add it to our collision list and remove it from our connections if present
-                if dist < (self.height//2)**2:
+                if dist < self.height:
                     self.collisions.append(temp_boid)
                     if (t_id, dist) in self.connected_boids:
                         self.connected_boids.remove((t_id, dist))

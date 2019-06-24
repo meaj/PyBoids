@@ -275,36 +275,42 @@ class ReynoldsGeneticAlgorithm:
         self.cur_generation += 1
 
 
-def move_all_boids_genetic(boid_list, flock_list, board_dims, boid_height, iteration_chromosome=ReynoldsChromosome()):
+def move_all_boids_genetic(boid_list, flock_manager, board_dims, playtime, iteration_chromosome=ReynoldsChromosome()):
     chromosome = iteration_chromosome
     # Create a dictionary of all boids by id to quickly search for boids by id values extracted from flock
+    flock_list = flock_manager.get_flocks()
     boid_dict = dict()
     for boid in boid_list:
         boid_dict.update({boid.get_id(): boid})
 
     for boid in boid_list:
+        idx = 0
         for flock in flock_list:
             b_id = boid.get_id()
             if b_id in flock:
-
                 # Calculate components of our velocity based on various rules
                 v1 = cohesion_rule(boid, flock, boid_dict) * chromosome.cohesion_gene
-                v2 = separation_rule(boid, flock, boid_dict, boid_height, chromosome.separation_gene)
+                v2 = separation_rule(boid, flock, boid_dict, chromosome.separation_gene)
                 v3 = alignment_rule(boid, flock, boid_dict) * chromosome.alignment_gene
                 # Special rule to check if goal is visible
                 if boid.is_object_visible(boid.calc_angle_from_pos(boid.nearest_goal.get_position())):
                     v4 = tend_to_position(boid, boid.nearest_goal.get_position()) * chromosome.goal_seeking_gene
-                    if abs(boid.calc_dist_to_object(boid.nearest_goal.get_position())) < 4*boid_height:
+                    # If you are close to the goal, get a boost to goal velocity
+                    if abs(boid.calc_dist_to_object(boid.nearest_goal.get_position())) < boid.too_close:
                         v4 *= 2
                 else:
                     v4 = Vector2D(random.randrange(0.0, 2.0), random.randrange(0.0, 2.0))
-                v5 = avoid_walls(boid, board_dims, boid_height) * chromosome.wall_avoidance_gene
+                v5 = avoid_walls(boid, board_dims) * chromosome.wall_avoidance_gene
 
                 dv = v1 + v2 + v3 + v4 + v5
                 dv *= boid.get_divergence()
 
                 boid.update_velocity(dv)
                 boid.update_position(board_dims)
+
+                boid.update_cost(boid_list, flock, flock_manager.get_thetas()[idx], flock_manager.get_goal_thetas()[idx],
+                                 flock_manager.get_centroids()[idx], playtime)
+            idx += 1
 
 
 # Encourage boids to form flocks
@@ -319,12 +325,12 @@ def cohesion_rule(boid, flock, boid_dict):
 
 
 # Encourage boids to avoid colliding as this causes mutual boid death
-def separation_rule(boid, flock, boid_dict, boid_height, avoidance_gene):
+def separation_rule(boid, flock, boid_dict, avoidance_gene):
     avoid = Vector2D()
     for mem in flock:
         member = boid_dict.get(mem)
         if member is not boid and member is not None:
-            if abs(member.get_position() - boid.get_position()) < boid_height*2:
+            if abs(member.get_position() - boid.get_position()) < boid.too_close:
                 avoid -= (member.get_position() - boid.get_position()) * avoidance_gene
     return avoid
 
@@ -346,17 +352,17 @@ def tend_to_position(boid, position):
 
 
 # Encourage boids to avoid walls as they can increase chance of collision
-def avoid_walls(boid, board_dims, boid_height):
+def avoid_walls(boid, board_dims):
     wall_avoid = Vector2D(0, 0)
     boid_pos = boid.get_position()
-    if boid_pos.x < 2*boid_height:
-        wall_avoid.x = boid_height
-    elif boid_pos.x >= board_dims[0] - 2*boid_height:
-        wall_avoid.x = -boid_height
+    if boid_pos.x < boid.height * 2:
+        wall_avoid.x = boid.height
+    elif boid_pos.x >= board_dims[0] - boid.height * 2:
+        wall_avoid.x = -boid.height
 
-    if boid_pos.y < 2*boid_height:
-        wall_avoid.y = boid_height
-    elif boid_pos.y >= board_dims[1] - 2*boid_height:
-        wall_avoid.y = -boid_height
+    if boid_pos.y < boid.height * 2:
+        wall_avoid.y = boid.height
+    elif boid_pos.y >= board_dims[1] - boid.height * 2:
+        wall_avoid.y = -boid.height
 
     return wall_avoid
