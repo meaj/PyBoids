@@ -50,8 +50,9 @@ class DisplayManager:
         self.screen.blit(monitor, (0, self.sim_area_height+1))
 
     # Displays monitoring data at the top of the screen
-    def display_simulation_overview(self, fps, playtime, num_flocks):
-        text = "FPS: {:6.2f}{}PLAYTIME: {:6.2f}{}FLOCKS: {}".format(fps, " " * 5, playtime, " " * 5, num_flocks)
+    def display_simulation_overview(self, fps, playtime, num_flocks, gen_num, iter_num):
+        text = "FPS: {:6.2f}{}PLAYTIME: {:6.2f}{}FLOCKS: {}{}GENERATION: {}{}ITERATION: {}".\
+            format(fps, " " * 5, playtime, " " * 5, num_flocks, " " * 5, gen_num, " " * 5, iter_num)
         surface = self.font.render(text, True, (0, 255, 0))
         self.screen.blit(surface, (0, 0))
 
@@ -98,11 +99,11 @@ class DisplayManager:
         self.screen.blit(surface, (x, y))
 
     # Calls the relevant display functions once per frame
-    def draw_screen(self, clock, playtime, flocks, boids, goals, draw_details=False):
+    def draw_screen(self, clock, playtime, flocks, boids, goals, draw_details=False, gen_num=0, iter_num=0):
         # Clear the screen
         self.background.fill(BLACK)
         # Draw the monitoring at the top of the screen
-        self.display_simulation_overview(clock.get_fps(), playtime, len(flocks.get_flocks()))
+        self.display_simulation_overview(clock.get_fps(), playtime, len(flocks.get_flocks()), gen_num, iter_num)
         # Draw objects in the simulation area
         for boid in boids:
             self.display_boid(boid, draw_details)

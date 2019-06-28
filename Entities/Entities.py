@@ -122,24 +122,14 @@ class Boid(Entity):
     def increment_score(self, val=1):
         self.score += val
 
-    def update_cost(self, boid_list, flock, flock_dir, flock_goal_dir, flock_centroid, playtime):
-        self.cost += self.my_dir - flock_dir
-        self.cost += self.my_dir - flock_goal_dir
+    def update_cost(self, flock_dir, flock_goal_dir, playtime):
+        # penalty for not following the same average dir as the flock
+        self.cost += (self.my_dir - flock_dir)/100
+        # penalty for not heading towards the goal
+        self.cost += (self.my_dir - self.goal_dir) / 100
+        # penalty for not heading towards the flock's perceived goal direction
+        # self.cost += (self.my_dir - flock_goal_dir)/100
 
-        dist_center = abs(self.pos - flock_centroid)
-
-        if dist_center <= self.too_close:
-            for other in flock:
-                for boid in boid_list:
-                    if boid.get_id() == other:
-                        self.cost += dist_center * ((abs(self.pos - boid.pos) - self.too_close)**2)/self.too_close**2
-                
-        elif dist_center > self.too_close:
-            for other in flock:
-                for boid in boid_list:
-                    if boid.get_id() == other:
-                        self.cost += dist_center * ((abs(self.pos - boid.pos)
-                                                    - self.too_close)**2)/dist_center - self.too_close**2
         self.live_time = playtime
 
     # Takes a tuple containing the position of an object and returns its angle relative to the boid's heading
@@ -220,15 +210,19 @@ class Boid(Entity):
         x = self.pos[0]
         x -= new_vel * math.sin(math.radians(new_dir))  # x component of our movement
         if x >= board_dims[0] - self.height // 2:
+            self.cost += 1  # Penalty for hitting the wall
             x = board_dims[0] - self.height // 2
         if x < self.height // 2:
+            self.cost += 1  # Penalty for hitting the wall
             x = self.height // 2
         # Change our y position
         y = self.pos[1]
         y -= new_vel * math.cos(math.radians(new_dir))  # y component of our movement
         if y >= board_dims[1] - 3 * self.height // 4:
+            self.cost += 1  # Penalty for hitting the wall
             y = board_dims[1] - 3 * self.height // 4
         if y < 12 + self.height // 2:  # 12 is the height of the text display at the top
+            self.cost += 1  # Penalty for hitting the wall
             y = 12 + self.height // 2
         self.pos = Vector2D.Vector2D(x, y)
 

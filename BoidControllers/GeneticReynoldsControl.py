@@ -66,8 +66,16 @@ class ReynoldsIteration:
     def __init__(self, generation_number=0, iteration_number=0, genome=ReynoldsChromosome()):
         self.generation_number = generation_number
         self.iteration_number = iteration_number
+        self.survivor_number = 0
+        self.livetime = 0
         self.genome = genome
         self.performance = 1.0
+
+    def update_livetime(self, val):
+        self.livetime = val
+
+    def update_survivors(self, val):
+        self.survivor_number = val
 
     def update_performance(self, value):
         self.performance = value
@@ -84,6 +92,12 @@ class ReynoldsIteration:
     def get_performance(self):
         return self.performance
 
+    def get_livetime(self):
+        return self.livetime
+
+    def get_survivors(self):
+        return self.survivor_number
+
     def set_id(self, value):
         self.iteration_number = value
 
@@ -94,6 +108,7 @@ class ReynoldsGeneticAlgorithm:
         self.max_generation = generation_number  # This indicates which generation to terminate on
         self.max_iterations = iteration_size  # This indicates how many iterations to create every generation
         self.mutation_rate = mutation_rate  # This is the rate at which genes will randomly mutate
+        self.genetic_history_best_performers = []  # This tracks the chromosomes used by the best of each iteration
         self.genetic_history = []  # This tracks the chromosomes used by each iteration each generation
         self.iteration_list = []  # This tracks the iterations used each generation, this is cleared once per gen
         self.survivors = []  # This tracks the iterations that survive after each culling
@@ -128,6 +143,20 @@ class ReynoldsGeneticAlgorithm:
     @staticmethod
     # Similar to crossover_genes, but allows each potential swap to be a average of the parent's genes
     def gene_commingling(chromosome_1, chromosome_2):
+        overlap = random.randrange(1, len(chromosome_1) + 1)
+        for i in range(0, overlap):
+            beta = random.random()
+            t_gene = (beta * chromosome_1[i]) + ((1 - beta) * chromosome_2[i])
+            o_gene = chromosome_1[i]
+            chromosome_1[i] = t_gene
+            beta = random.random()
+            t_gene = (beta * o_gene) + ((1 - beta) * chromosome_2[i])
+            chromosome_2[i] = t_gene
+        return chromosome_1, chromosome_2
+
+    @staticmethod
+    # Similar to crossover_genes, but allows each potential swap to be a average of the parent's genes
+    def winner_take_all_gene_commingling(chromosome_1, chromosome_2):
         overlap = random.randrange(1, len(chromosome_1) + 1)
         for i in range(0, overlap):
             beta = random.random()
@@ -215,33 +244,31 @@ class ReynoldsGeneticAlgorithm:
         # Crossover
         # copy is use to ensure that the list values are exchanged and not the list values themselves
         if crossover_type == 1:
-            offspring_genome_1, offspring_genome_2 = self.binary_choice_crossover_genes(
-                copy.copy(iteration_2.get_genome()), copy.copy(iteration_1.get_genome()))
+            offspring_genome_1, offspring_genome_2 = copy.copy(iteration_1.get_genome()), copy.copy(iteration_2.get_genome())
             offspring_genome_3, offspring_genome_4 = self.binary_choice_crossover_genes(
                 copy.copy(iteration_1.get_genome()), copy.copy(iteration_2.get_genome()))
         elif crossover_type == 2:
-            offspring_genome_1, offspring_genome_2 = self.unbounded_gene_commingling(
-                copy.copy(iteration_2.get_genome()), copy.copy(iteration_1.get_genome()))
+            offspring_genome_1, offspring_genome_2 = copy.copy(iteration_1.get_genome()), copy.copy(iteration_2.get_genome())
             offspring_genome_3, offspring_genome_4 = self.unbounded_gene_commingling(
                 copy.copy(iteration_1.get_genome()), copy.copy(iteration_2.get_genome()))
         elif crossover_type == 3:
-            offspring_genome_1, offspring_genome_2 = self.bounded_gene_commingling(
-                copy.copy(iteration_2.get_genome()), copy.copy(iteration_1.get_genome()))
+            offspring_genome_1, offspring_genome_2 = copy.copy(iteration_1.get_genome()), copy.copy(iteration_2.get_genome())
             offspring_genome_3, offspring_genome_4 = self.bounded_gene_commingling(
                 copy.copy(iteration_1.get_genome()), copy.copy(iteration_2.get_genome()))
         elif crossover_type == 4:
-            offspring_genome_1, offspring_genome_2 = self.alternating_gene_commingling(
-                copy.copy(iteration_2.get_genome()), copy.copy(iteration_1.get_genome()))
+            offspring_genome_1, offspring_genome_2 = copy.copy(iteration_1.get_genome()), copy.copy(iteration_2.get_genome())
             offspring_genome_3, offspring_genome_4 = self.alternating_gene_commingling(
                 copy.copy(iteration_1.get_genome()), copy.copy(iteration_2.get_genome()))
         elif crossover_type == 5:
-            offspring_genome_1, offspring_genome_2 = self.gene_commingling(
-                copy.copy(iteration_2.get_genome()), copy.copy(iteration_1.get_genome()))
+            offspring_genome_1, offspring_genome_2 = copy.copy(iteration_1.get_genome()), copy.copy(iteration_2.get_genome())
+            offspring_genome_3, offspring_genome_4 = self.winner_take_all_gene_commingling(
+                copy.copy(iteration_1.get_genome()), copy.copy(iteration_2.get_genome()))
+        elif crossover_type == 6:
+            offspring_genome_1, offspring_genome_2 = copy.copy(iteration_1.get_genome()), copy.copy(iteration_2.get_genome())
             offspring_genome_3, offspring_genome_4 = self.gene_commingling(
                 copy.copy(iteration_1.get_genome()), copy.copy(iteration_2.get_genome()))
         else:
-            offspring_genome_1, offspring_genome_2 = self.crossover_genes(copy.copy(iteration_2.get_genome()),
-                                                                          copy.copy(iteration_1.get_genome()))
+            offspring_genome_1, offspring_genome_2 = copy.copy(iteration_1.get_genome()), copy.copy(iteration_2.get_genome())
             offspring_genome_3, offspring_genome_4 = self.crossover_genes(copy.copy(iteration_1.get_genome()),
                                                                           copy.copy(iteration_2.get_genome()))
         # Mutations
@@ -273,6 +300,20 @@ class ReynoldsGeneticAlgorithm:
 
         self.iteration_list = next_gen
         self.cur_generation += 1
+
+
+class SeededReynoldsGeneticAlgorithm(ReynoldsGeneticAlgorithm):
+    def __init__(self, generation_number, iteration_size, mutation_rate, seed):
+        super().__init__(generation_number, iteration_size, mutation_rate)
+        self.iteration_list = []
+        for i in range(self.max_iterations):
+            self.iteration_list.append(ReynoldsIteration(self.cur_generation, i+1,
+                                                         ReynoldsChromosome(random.uniform(-1, 1) + seed[0],
+                                                                            random.uniform(-1, 1) + seed[1],
+                                                                            random.uniform(-1, 1) + seed[2],
+                                                                            random.uniform(-1, 1) + seed[3],
+                                                                            random.uniform(-1, 1) + seed[4],
+                                                                            random.uniform(-1, 1) + seed[5])))
 
 
 def move_all_boids_genetic(boid_list, flock_manager, board_dims, playtime, iteration_chromosome=ReynoldsChromosome()):
@@ -308,8 +349,7 @@ def move_all_boids_genetic(boid_list, flock_manager, board_dims, playtime, itera
                 boid.update_velocity(dv)
                 boid.update_position(board_dims)
 
-                boid.update_cost(boid_list, flock, flock_manager.get_thetas()[idx], flock_manager.get_goal_thetas()[idx],
-                                 flock_manager.get_centroids()[idx], playtime)
+                boid.update_cost(flock_manager.get_thetas()[idx], flock_manager.get_goal_thetas()[idx], playtime)
             idx += 1
 
 
@@ -330,7 +370,8 @@ def separation_rule(boid, flock, boid_dict, avoidance_gene):
     for mem in flock:
         member = boid_dict.get(mem)
         if member is not boid and member is not None:
-            if abs(member.get_position() - boid.get_position()) < boid.too_close:
+            if abs(member.get_position() - boid.get_position()) <= boid.too_close:
+                boid.cost += 1  # Increment cost if we are too close
                 avoid -= (member.get_position() - boid.get_position()) * avoidance_gene
     return avoid
 

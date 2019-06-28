@@ -3,12 +3,14 @@ Pyboids - SimulationManager
  * A class containing the definitions of the SimulationManager object
  * Copyright (c) 2019 Meaj
 """
+import sys
 import pygame
 import random
 from Entities.Entities import Boid, Entity
 from Managers.FlockManager import FlockManager
 from BoidControllers.ReynoldsControl import move_all_boids
-from BoidControllers.GeneticReynoldsControl import move_all_boids_genetic, ReynoldsGeneticAlgorithm, ReynoldsChromosome
+from BoidControllers.GeneticReynoldsControl import move_all_boids_genetic, ReynoldsGeneticAlgorithm, \
+    ReynoldsChromosome, SeededReynoldsGeneticAlgorithm
 from Managers.DisplayManager import DisplayManager
 
 # Game_state Definitions
@@ -18,7 +20,7 @@ EXIT = 0
 EVALUATE = 2
 
 # Format for update is completed_release.goal_number.update_number
-VERSION = "0.4.8"
+VERSION = "0.4.9"
 
 # TODO: Allow user to set number simulation iterations (continuous or N)
 # TODO: Allow user to choose which simulation will run on startup instead of by editing code
@@ -69,8 +71,8 @@ class SimulationManager:
         bonus = 0
         if survivors:
             for boid in survivors:
-                bonus += boid.get_score() + 1  # Each survivor gets one point plus their score added to the bonus
-        return (bonus + score) / self.playtime  # In the end we should end up with the total score per second
+                bonus += boid.get_score()/self.playtime + 1
+        return bonus + score
 
     # Removes boids that have collided and adds scores
     def get_collisions(self, sim_score):
@@ -79,11 +81,15 @@ class SimulationManager:
             if col:
                 for c in col:
                     if c in self.boid_list:
-                        sim_score -= c.get_cost() / c.get_live_time()
+                        # Account for cost when boids die, reward based on time alive out of full time
+                        sim_score -= c.get_cost()
+                        sim_score += c.get_live_time()/30
                         self.boid_list.remove(c)
                     # print("{} died due to a collision!".format(c.get_id()))
                     del c
-                sim_score -= boid.get_cost() / boid.get_live_time()
+                # Account for cost when boids die, reward based on time alive out of full time
+                sim_score -= boid.get_cost()
+                sim_score += boid.get_live_time()/30
                 self.boid_list.remove(boid)
                 # print("{} died due to a collision!".format(boid.get_id()))
                 del boid
@@ -149,16 +155,16 @@ class SimulationManager:
                 new_vel += 0.05
         return run, new_vel, new_dir
 
-    def iteration_loop(self, genome):
+    def iteration_loop(self, genome, gen_num, iter_num):
         self.playtime = 0
         num_flocks = 0
         game_state = RUN
         sim_score = 0
         fitness = 0
         while game_state != EXIT:
-            if self.playtime > 60:
+            if self.playtime > 30:
                 for boid in self.boid_list:
-                    sim_score -= boid.get_cost() / boid.get_live_time()
+                    sim_score -= boid.get_cost()
                 fitness = self.fitness_function(sim_score, self.boid_list)
                 print("Fitness was: {}".format(fitness))
                 print("This sim was run for {0:.2f} seconds before finishing".format(self.playtime))
@@ -204,7 +210,7 @@ class SimulationManager:
             # Call our display functions
             if self.display_manager:
                 self.display_manager.draw_screen(self.clock, self.playtime, self.flock_manager,
-                                                 self.boid_list, self.goal_list, self.show_centroids)
+                                                 self.boid_list, self.goal_list, self.show_centroids, gen_num, iter_num)
 
         return fitness
 
@@ -212,12 +218,15 @@ class SimulationManager:
     def run_generations(self, crossover_type=0):
         # Create our algorithm manager with the number of generations from 0 to n,
         # the number of iterations per generation, and the mutation rate denominator
-        genetic_algorithm = ReynoldsGeneticAlgorithm(24, 12, 100)
+        # genetic_algorithm = ReynoldsGeneticAlgorithm(12, 12, 100)
+        genetic_algorithm = SeededReynoldsGeneticAlgorithm(12, 12, 25, [1, .25, 1/8, 1/128, 1, 1.1])
         # Loop through each generation
         while genetic_algorithm.cur_generation <= genetic_algorithm.max_generation:
             # Loop through each iteration
             idx = 1
             for iteration in genetic_algorithm.get_iteration_list():
+                # Try to ensure that each iteration has the same seed for goal and boid placement
+                random.seed(genetic_algorithm.cur_generation)
                 iteration.set_id(idx)
                 print("Generation {} Iteration {}".format(genetic_algorithm.cur_generation, iteration.get_id()))
                 # Create new population for each generation
@@ -225,31 +234,46 @@ class SimulationManager:
                 for i in range(32):
                     self.boid_list.append(Boid(i, random.randrange(15, self.window_width),
                                                random.randrange(15, self.sim_area_height), self.boid_height))
-                fitness = self.iteration_loop(iteration.get_genome())
+                fitness = self.iteration_loop(iteration.get_genome(), genetic_algorithm.cur_generation, iteration.get_id())
+                iteration.update_livetime(self.playtime)
+                iteration.update_survivors(len(self.boid_list))
                 iteration.update_performance(fitness)
+                genetic_algorithm.genetic_history.append(
+                    [genetic_algorithm.cur_generation, iteration.get_id(),
+                     iteration.get_genome(), fitness,
+                     iteration.get_livetime(), iteration.get_survivors()])
                 idx += 1
             # Find best iteration from each generation
-            best_score = -1
-            best_iteration = genetic_algorithm.get_iteration_list()[0].get_genome()
+            best_score = -sys.maxsize - 1
+            best_iteration = genetic_algorithm.get_iteration_list()[0]
             for iteration in genetic_algorithm.get_iteration_list():
                 tst = iteration.get_performance()
                 if tst > best_score:
                     best_score = tst
-                    best_iteration = iteration.get_genome()
+                    best_iteration = iteration
             # Store genetic data for best in each generation
-            genetic_algorithm.genetic_history.append([genetic_algorithm.cur_generation, best_iteration, best_score])
+            genetic_algorithm.genetic_history_best_performers.append([genetic_algorithm.cur_generation,
+                                                                      best_iteration.get_id(),
+                                                                      best_iteration.get_genome(), best_score,
+                                                                      best_iteration.get_livetime(),
+                                                                      best_iteration.get_survivors()])
             genetic_algorithm.advance_generation(crossover_type)
         # Determine best performing genome and display it
-        best_iteration = genetic_algorithm.iteration_list[0]
+        best_iteration = genetic_algorithm.get_iteration_list()[0]
         for iteration in genetic_algorithm.get_iteration_list():
             if iteration.performance > best_iteration.performance:
                 best_iteration = iteration
         print("The best genome evolved after {} generations was {}".format(genetic_algorithm.max_generation,
                                                                            best_iteration.get_genome()))
-        gene_history = open("best_performers_method_{}.txt".format(crossover_type), "w")
-        gene_history.write("Generation;Chromosome;Performance\n")
+        best_performers = open("best_performers_method_{}.txt".format(crossover_type), "w")
+        best_performers.write("Generation;Iteration;Chromosome;Performance;Live Time;Survivors\n")
+        for entry in genetic_algorithm.genetic_history_best_performers:
+            best_performers.write("{};{};{};{};{};{}\n".format(entry[0], entry[1], entry[2], entry[3], entry[4], entry[5]))
+        best_performers.close()
+        gene_history = open("genetic_history_method_{}.txt".format(crossover_type), "w")
+        gene_history.write("Generation;Iteration;Chromosome;Performance;Live Time;Survivors\n")
         for entry in genetic_algorithm.genetic_history:
-            gene_history.write("{};{};{}\n".format(entry[0], entry[1], entry[2]))
+            gene_history.write("{};{};{};{};{};{}\n".format(entry[0], entry[1], entry[2], entry[3], entry[4], entry[5]))
         gene_history.close()
 
     # Game loop
@@ -258,7 +282,7 @@ class SimulationManager:
         game_state = RUN
         sim_score = 0
         while game_state != EXIT:
-            if self.playtime > 60:
+            if self.playtime > 30:
                 break
 
             # Get key presses/events
@@ -276,7 +300,7 @@ class SimulationManager:
                 temp_boid.find_nearest_goal(self.goal_list)
 
             # Look for all collisions and handle accordingly
-            self.get_collisions(sim_score)
+            sim_score = self.get_collisions(sim_score)
 
             # TODO: When converting to NN control, velocity and direction will be calculated by each boid's network
             # Key based control
@@ -289,7 +313,10 @@ class SimulationManager:
             # .759, .985, .597, .103, -.199, -.555
             # 0.578, 0.7909894024404782, 0.917, 0.20089257410211592, -0.3285011686127677, -0.9371975566340713
             # 1, .25, 1/8, 1/128, 1, 1.1
-            genome = ReynoldsChromosome(1, .25, 1/8, 1/128, 1, 1.1)
+            # -0.18180729355868763, 0.8241052487791916, 0.7028804320371147, -0.636696685674897, 0.07406855363421672, 0.6906995399561737
+            # 5.102145871473336, 0.12225270560240276, -0.4907147143031878, 0.20564065542552967, -0.5995262699036377, -0.8545783665976601
+            # -0.4674356703062049, 0.3025268101184942, 0.09942988837552422, -0.5665319558040931, -0.9697534112418487, 0.441
+            genome = ReynoldsChromosome(1.8372722571243953, 0.6261830217695918, 0.0038880012734294755, 0.24024522715113705, 1.6372338714481125, 1.035034599431479)
             move_all_boids_genetic(self.boid_list, self.flock_manager,
                                    (self.window_width, self.sim_area_height), self.playtime, genome)
 
