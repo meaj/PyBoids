@@ -71,29 +71,21 @@ class SimulationManager:
         bonus = 0
         if survivors:
             for boid in survivors:
-                bonus += boid.get_score()/self.playtime + 1
+                bonus += boid.score/self.playtime + 1
         return bonus + score
 
     # Removes boids that have collided and adds scores
     def get_collisions(self, sim_score):
         for boid in self.boid_list:
-            col = boid.get_collisions()
+            col = boid.collided
             if col:
-                for c in col:
-                    if c in self.boid_list:
-                        # Account for cost when boids die, reward based on time alive out of full time
-                        sim_score -= c.get_cost()
-                        sim_score += c.get_live_time()/30
-                        self.boid_list.remove(c)
-                    # print("{} died due to a collision!".format(c.get_id()))
-                    del c
                 # Account for cost when boids die, reward based on time alive out of full time
-                sim_score -= boid.get_cost()
-                sim_score += boid.get_live_time()/30
+                sim_score -= boid.cost
+                sim_score += boid.live_time/30
                 self.boid_list.remove(boid)
                 # print("{} died due to a collision!".format(boid.get_id()))
                 del boid
-            elif boid.get_touched():
+            elif boid.has_touched_goal():
                 # print("Boid {} scored a point by touching goal {}".format(boid.get_id(), boid.nearest_goal.get_id()))
                 sim_score += self.flock_manager.update_flock_score(boid.get_id(), self.boid_list)
                 # temporary goal redeployment
@@ -164,7 +156,7 @@ class SimulationManager:
         while game_state != EXIT:
             if self.playtime > 30:
                 for boid in self.boid_list:
-                    sim_score -= boid.get_cost()
+                    sim_score -= boid.cost
                 fitness = self.fitness_function(sim_score, self.boid_list)
                 print("Fitness was: {}".format(fitness))
                 print("This sim was run for {0:.2f} seconds before finishing".format(self.playtime))
@@ -183,8 +175,8 @@ class SimulationManager:
 
             # Setup connections and look for goals
             for temp_boid in self.boid_list:
-                temp_boid.find_connections(self.boid_list)
-                temp_boid.find_nearest_goal(self.goal_list)
+                temp_boid.update_connected_boids(self.boid_list)
+                temp_boid.update_nearest_goal(self.goal_list)
 
             # Look for all collisions and handle accordingly
             sim_score = self.get_collisions(sim_score)
@@ -296,8 +288,8 @@ class SimulationManager:
 
             # Setup connections and look for goals
             for temp_boid in self.boid_list:
-                temp_boid.find_connections(self.boid_list)
-                temp_boid.find_nearest_goal(self.goal_list)
+                temp_boid.update_connected_boids(self.boid_list)
+                temp_boid.update_nearest_goal(self.goal_list)
 
             # Look for all collisions and handle accordingly
             sim_score = self.get_collisions(sim_score)

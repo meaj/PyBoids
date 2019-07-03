@@ -93,13 +93,13 @@ class FlockManager:
                     # Gather data for each boid
                     if boid.get_id() == member:
                         t = boid.get_position()
-                        sum_vel += boid.get_velocity()
-                        sum_x += t[0]
-                        sum_y += t[1]
+                        sum_vel += boid.velocity
+                        sum_x += t.x
+                        sum_y += t.y
                         sum_theta += boid.get_direction()
-                        score += boid.get_score()
-                        if boid.get_goal_dir() != -1:
-                            sum_goal_theta += boid.get_goal_dir()
+                        score += boid.score
+                        if boid.get_goal_direction() != -1:
+                            sum_goal_theta += boid.get_goal_direction()
                             visible_goals += 1
             # Append each new value so that the indexes for the data match those of the flocks
             cent.append(Vector2D(sum_x/len(flock), sum_y/len(flock)))  # just the average position of each boid
@@ -125,7 +125,7 @@ class FlockManager:
         for boid in boids:
             # Extract all the boid IDs to the list of new connections, con
             con = [boid.get_id()]
-            for entry in boid.get_connected_boids():
+            for entry in boid.connected_boids:
                 con.append(entry[0])
             # Begin placing con into flocks
             # When flocks is empty, add the current con to the list of flocks

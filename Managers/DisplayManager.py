@@ -41,7 +41,7 @@ class DisplayManager:
 
         i = 0
         for i in range(len(flock_list)):
-            cent = "{:3.2f}, {:3.2f}".format(flock_centroids[i][0], flock_centroids[i][1])
+            cent = "{:3.2f}, {:3.2f}".format(flock_centroids[i].x, flock_centroids[i].y)
             string = "{0:^6}{1:^5s}{2:^15}{1:^4s}{3:^10.2f}{1:^4s}{4:^14.2f}{1:^5s}{5:^6d}{1:^4s}{6:}"\
                 .format(i + 1, "|", cent, flock_thetas[i], flock_goals[i], flock_scores[i], flock_list[i])
             monitor.blit(self.font.render(string, True, GREEN), (12, (i+1) * 13))
@@ -58,8 +58,8 @@ class DisplayManager:
 
     # Draws shapes representing goal objects
     def display_goal(self, pos, radius):
-        x = pos[0]
-        y = pos[1]
+        x = pos.x
+        y = pos.y
         surface = self.pygame.Surface((2*radius, 2*radius))
         surface.convert_alpha(surface)
         surface.set_colorkey(BLACK)
@@ -70,8 +70,8 @@ class DisplayManager:
     def display_boid(self, boid, draw_details):
         x = boid.get_position().x
         y = boid.get_position().y
-        height = boid.get_height()
-        angle = boid.my_dir
+        height = boid.radius
+        angle = boid.get_direction()
         points = [(int(height // 2), 0),
                   (0, int(height)),
                   (int(height), int(height))]

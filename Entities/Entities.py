@@ -6,117 +6,189 @@ Pyboids - Entities
 import math
 from Entities import Vector2D
 
+MAX_VELOCITY = 5
+
 
 class Entity:
-    def __init__(self, entity_id, x_pos, y_pos):
-        self.entity_id = entity_id
-        self.pos = Vector2D.Vector2D(x_pos, y_pos)
+    def __init__(self, entity_id=-1, x_pos=0, y_pos=0, radius=2):
+        self.entity_id = entity_id  # Numerical identifier for this entity
+        self.pos = Vector2D.Vector2D(x_pos, y_pos)  # Vector representing the position of the entity
+        self.radius = radius
 
+    """ Getter functions used to communicate with other classes """
     def get_position(self):
         return self.pos
 
     def get_id(self):
         return self.entity_id
 
+    def get_radius(self):
+        return self.radius
+
 
 class Boid(Entity):
+    def __init__(self, boid_id, x, y, radius=2):
+        # Variables inherited from entity class
+        super().__init__(boid_id, x, y, radius)
 
-    def __init__(self, boid_id, x, y, side_len, divergence_value=1):
-        super().__init__(boid_id, x, y)
-        self.height = math.sqrt(3) * (side_len // 2)  # used in display calculations
-        self.too_close = self.height * 3  # used to determine when boids should avoid each other
-        self.too_far = (self.height ** 2) * 100  # used to determine when the boids are too far to flock
-        self.vel = Vector2D.Vector2D()  # current velocity of the boid
-        self.my_dir = 0  # current heading of the boid
-        self.divergence = divergence_value  # currently unused, but would account for random movement between boids
+        # Movement Variables
+        self.velocity = Vector2D.Vector2D()  # Vector representing the velocity of the entity
+        self.divergence = 1.0  # Used to introduce random movement for related boids in each population
 
-        self.connected_boids = []  # list of all visible boids in range, their ids, and positions used to form flocks
-        self.visible_boids = []  # List of all visible boids, used to encourage flocking by showing possible options
-        self.collisions = []  # list of boids we are too close to
-        
-        self.touched_goal = False  # used to alert manager when a coin is touched
-        self.nearest_goal = Entity(0, 0, 0)  # used in boid movement and flock formation
-        self.goal_dir = 0  # direction of nearest goal relative to boid
-        
-        self.score = 0  # used as part of evaluating the fitness of the model
-        self.cost = 0  # used as part of evaluating the fitness of the model
-        self.live_time = 0  # used as part of evaluating the fitness of the model
+        # Flocking data
+        # Range variables
+        self.collision_range = radius * 2.5  # Distance from our position at which we collide with another boid
+        self.separate_range = radius * 5  # Distance from our position at which we begin to avoid other boids
+        self.flock_range = self.separate_range * 20  # Distance from our position at which we begin to form flocks
+        # Flock formation variables
+        self.visible_boids = []  # List of all boids within the visible arc of the boid
+        self.connected_boids = []  # List of tuples of all visible boids within flock_range and the distance to them
 
-    # Returns the magnitude of the velocity vector
-    def get_speed(self):
-        return abs(self.vel)
+        # Fitness data
+        # Scoring Variables
+        self.touched_goal = False  # Boolean used to inform simulation manager a goal has been touched
+        self.nearest_goal = Entity()  # Entity object that will store information about the nearest goal
+        self.score = 0  # Integer representing the number of points awarded to this boid for touching goals
+        # Cost Variables
+        self.collided = False  # Boolean used to inform simulation manager that the boid has collided with another
+        self.cost = 0  # Float representing the ability of this boid to flock, avoid obstacles, and head toward goals
+        self.live_time = 0  # Float representing the number of seconds this boid has been active for
 
+    """ Getter functions used to communicate with other classes """
+    # Return the magnitude of our velocity vector
+    def get_acceleration(self):
+        return abs(self.velocity)
+
+    # Return the direction of our velocity vector
     def get_direction(self):
-        return self.my_dir
+        return self.velocity.get_direction()
 
-    def get_goal_dir(self):
-        return self.goal_dir
+    # Return the distance between us and another entity
+    def get_distance_to_other(self, other):
+        return (self.pos.x - other.pos.x) ** 2 + (self.pos.y - other.pos.y) ** 2
 
-    def get_connected_boids(self):
-        return self.connected_boids
+    # Return the direction of another entity relative to us
+    def get_direction_to_other(self, other):
+        dx = self.pos.x - other.pos.x
+        dy = self.pos.y - other.pos.y
+        return math.atan2(dy, dx) * 180/math.pi
 
-    def get_visible_boids(self):
-        return self.visible_boids
+    # Return the direction of the nearest goal relative to us
+    def get_goal_direction(self):
+        theta = self.get_direction_to_other(self.nearest_goal)
+        if self.is_entity_visible(theta):
+            return theta
+        else:
+            return -1
 
-    def get_collisions(self):
-        return self.collisions
-
-    def get_touched(self):
+    # Return the value of self.touched_goal
+    def has_touched_goal(self):
         return self.touched_goal
 
-    def get_score(self):
-        return self.score
+    # Returns true or false depending on if the relative angle of the entity is within our visible arc
+    def is_entity_visible(self, theta):
+        arc = (135 + self.get_direction()) % 360, (225 + self.get_direction()) % 360
+        if arc[0] <= theta <= arc[1]:
+            return False
+        else:
+            return True
 
-    def get_height(self):
-        return self.height
+    """ Setter and updater functions used to change variables """
+    # Change divergence by provided value
+    def set_divergence(self, value):
+        self.divergence = value
 
-    def get_velocity(self):
-        return self.vel
+    # Change score by provided value
+    def update_score(self, value=1):
+        self.score += value
 
-    def get_divergence(self):
-        return self.divergence
+    # Change cost related variables by provided values
+    def update_cost_variables(self, playtime):
+        # Match our live_time to playtime
+        self.live_time = playtime
 
-    def get_live_time(self):
-        return self.live_time
+    # Change velocity by provided vector
+    def update_velocity(self, vector):
+        # First ensure our velocity does not go over the limit
+        vector += self.velocity
 
-    def get_cost(self):
-        return self.cost
+        if vector.x > MAX_VELOCITY:
+            vector.x = MAX_VELOCITY
+        elif vector.x < -MAX_VELOCITY:
+            vector.x = -MAX_VELOCITY
 
-    def set_divergence(self, val):
-        self.divergence = val
+        if vector.y > MAX_VELOCITY:
+            vector.y = MAX_VELOCITY
+        elif vector.y < -MAX_VELOCITY:
+            vector.y = -MAX_VELOCITY
 
-    def update_velocity(self, val):
-        val += self.vel
-        # Velocity limiting rules
-        if val.x >= 5:
-            val.x = 5
-        elif val.x <= -5:
-            val.x = -5
+        # Update velocity vector after checks and apply divergence value
+        self.velocity = vector * self.divergence
 
-        if val.y >= 5:
-            val.y = 5
-        elif val.y <= -5:
-            val.y = -5
+    def move_boid(self):
+        self.pos += self.velocity
 
-        self.vel = val
+    # Updates the list of visible boids based on the provided list of all boids
+    def update_visible_boids(self, boid_list):
+        visible = []
+
+        for other_boid in boid_list:
+            if other_boid is not self:
+                theta = self.get_direction_to_other(other_boid)
+                if self.is_entity_visible(theta):
+                    visible.append(other_boid)
+
+        self.visible_boids = visible
+
+    # Updates the list of connected boids based on the list of provided boids
+    def update_connected_boids(self, boid_list):
+        connections = []
+        self.update_visible_boids(boid_list)
+
+        for other_boid in boid_list:
+            if other_boid is not self:
+                distance = self.get_distance_to_other(other_boid)
+                # Handle collisions first
+                if distance <= self.collision_range:
+                    self.collided = True
+                # Add visible boids in range to connections, along with the distance to them
+                if distance < self.flock_range and other_boid in self.visible_boids:
+                    connections.append((other_boid, distance))
+
+        self.connected_boids = connections
+
+    # Updates nearest_goal based on the list of provided goals
+    def update_nearest_goal(self, goal_list):
+        nearest = goal_list[-1]
+        for goal in goal_list:
+            if nearest is not goal and self.is_entity_visible(self.get_direction_to_other(goal)):
+                if abs(goal.get_position() - self.pos) < abs(nearest.get_position() - self.pos):
+                    nearest = goal
+        self.nearest_goal = nearest
+
+    # Updates touched_goal boolean
+    def update_touched_goal(self):
+        if not self.touched_goal and self.get_distance_to_other(self.nearest_goal) < self.collision_range:
+            self.touched_goal = True
+        else:
+            self.touched_goal = False
 
     # Move the boid on the simulation area
     def update_position(self, board_dims):
-        self.pos += self.vel
-        x = self.pos[0]
-        y = self.pos[1]
+        self.pos += self.velocity
+        x = self.pos.x
+        y = self.pos.y
         # Change our x position
-        if x >= board_dims[0] - self.height // 2:
-            x = board_dims[0] - self.height // 2
-        if x < self.height // 2:
-            x = self.height // 2
+        if x >= board_dims[0] - self.radius:
+            x = board_dims[0] - self.radius
+        if x < self.radius:
+            x = self.radius
         # Change our y position
-        if y >= board_dims[1] - 3 * self.height // 4:
-            y = board_dims[1] - 3 * self.height // 4
-        if y < 12 + self.height // 2:  # 12 is the height of the text display at the top
-            y = 12 + self.height // 2
+        if y >= board_dims[1] - self.radius:
+            y = board_dims[1] - self.radius
+        if y < 12 + self.radius:  # 12 is the height of the text display at the top
+            y = 12 + self.radius
         self.pos = Vector2D.Vector2D(x, y)
-        self.my_dir = (180 + self.vel.argument()) % 360
 
     # Increments the score by the passed value or 1 by default
     def increment_score(self, val=1):
@@ -124,106 +196,11 @@ class Boid(Entity):
 
     def update_cost(self, flock_dir, flock_goal_dir, playtime):
         # penalty for not following the same average dir as the flock
-        self.cost += (self.my_dir - flock_dir)/100
+        self.cost += (self.get_direction() - flock_dir) / 100
         # penalty for not heading towards the goal
-        self.cost += (self.my_dir - self.goal_dir) / 100
+        self.cost += (self.get_direction() - self.get_goal_direction()) / 100
         # penalty for not heading towards the flock's perceived goal direction
         # self.cost += (self.my_dir - flock_goal_dir)/100
 
         self.live_time = playtime
-
-    # Takes a tuple containing the position of an object and returns its angle relative to the boid's heading
-    def calc_angle_from_pos(self, obj_pos):
-        temp_theta = math.atan2(self.pos.y - obj_pos.y, self.pos.x - obj_pos.x)
-        if temp_theta < 0:
-            temp_theta = abs(temp_theta)
-        else:
-            temp_theta = 2 * math.pi - temp_theta
-        return (math.degrees(temp_theta) + 90) % 360
-
-    # Takes an angle theta and checks if it is in visible range of the boid
-    def is_object_visible(self, theta):
-        arc = (135 + self.my_dir) % 360, (225 + self.my_dir) % 360
-        if arc[0] <= theta <= arc[1]:
-            return False
-        else:
-            return True
-
-    # Just your friendly neighborhood distance formula
-    def calc_dist_to_object(self, pos):
-        return math.pow(self.pos[0] - pos[0], 2) + pow(self.pos[1] - pos[1], 2)
-
-    # Creates a list of connections, that is boids that are visible and have a distance within range
-    # If boids collide, a list is made so that the game manager can remove them
-    def find_connections(self, list_of_boids):
-        self.connected_boids = []
-        self.visible_boids = []
-
-        # For each boid that isn't us, get the id, distance to it, and relative angle
-        for temp_boid in list_of_boids:
-            if temp_boid.entity_id != self.entity_id:
-                t_id = temp_boid.get_id()
-                theta = self.calc_angle_from_pos(temp_boid.get_position())
-                dist = self.calc_dist_to_object(temp_boid.get_position())
-                if self.is_object_visible(theta):
-                    self.visible_boids.append((t_id, dist))
-                # If the boid is in our range of vision and close enough, add it to our connection list
-                if self.is_object_visible(theta) and dist <= self.too_far:
-                    self.connected_boids.append((t_id, dist))
-                # If the boid is too close, add it to our collision list and remove it from our connections if present
-                if dist < self.height:
-                    self.collisions.append(temp_boid)
-                    if (t_id, dist) in self.connected_boids:
-                        self.connected_boids.remove((t_id, dist))
-
-    # Finds the nearest goal and sets touched_goal to true when appropriate
-    def find_nearest_goal(self, goal_list):
-        nearest = goal_list[-1]
-        for goal in goal_list:
-            if nearest is not goal and self.is_object_visible(self.calc_angle_from_pos(goal.get_position())):
-                if abs(goal.get_position() - self.pos) < abs(nearest.get_position() - self.pos):
-                    nearest = goal
-        self.nearest_goal = nearest
-        if not self.touched_goal and self.calc_dist_to_object(self.nearest_goal.get_position()) < 64:
-            self.touched_goal = True
-        else:
-            self.touched_goal = False
-        temp = self.calc_angle_from_pos(self.nearest_goal.get_position())
-        if self.is_object_visible(temp):
-            self.goal_dir = temp  # goal is visible
-        else:
-            self.goal_dir = -1  # goal is not visible
-
-    # Old movement function used by keyboard controller, needs adjustment
-    def move(self, new_vel, new_dir, board_dims):
-        # Change our heading
-        if new_dir >= 360:
-            new_dir -= 360
-        if new_dir < 0:
-            new_dir += 360
-        self.my_dir = new_dir
-
-        # Change our velocity
-        self.vel = new_vel
-
-        # Change our x position
-        x = self.pos[0]
-        x -= new_vel * math.sin(math.radians(new_dir))  # x component of our movement
-        if x >= board_dims[0] - self.height // 2:
-            self.cost += 1  # Penalty for hitting the wall
-            x = board_dims[0] - self.height // 2
-        if x < self.height // 2:
-            self.cost += 1  # Penalty for hitting the wall
-            x = self.height // 2
-        # Change our y position
-        y = self.pos[1]
-        y -= new_vel * math.cos(math.radians(new_dir))  # y component of our movement
-        if y >= board_dims[1] - 3 * self.height // 4:
-            self.cost += 1  # Penalty for hitting the wall
-            y = board_dims[1] - 3 * self.height // 4
-        if y < 12 + self.height // 2:  # 12 is the height of the text display at the top
-            self.cost += 1  # Penalty for hitting the wall
-            y = 12 + self.height // 2
-        self.pos = Vector2D.Vector2D(x, y)
-
 
