@@ -62,7 +62,7 @@ class ReynoldsChromosome:
                                                  self.goal_seeking_gene, self.wall_avoidance_gene, self.divergence_gene)
 
 
-class ReynoldsIteration:
+class ReynoldsSpecies:
     def __init__(self, generation_number=0, iteration_number=0, genome=ReynoldsChromosome()):
         self.generation_number = generation_number
         self.iteration_number = iteration_number
@@ -114,8 +114,8 @@ class ReynoldsGeneticAlgorithm:
         self.survivors = []  # This tracks the iterations that survive after each culling
 
         for i in range(self.max_iterations):
-            self.iteration_list.append(ReynoldsIteration(self.cur_generation, i+1,
-                                                         ReynoldsChromosome(random.uniform(-1, 1),
+            self.iteration_list.append(ReynoldsSpecies(self.cur_generation, i + 1,
+                                                       ReynoldsChromosome(random.uniform(-1, 1),
                                                                             random.uniform(-1, 1),
                                                                             random.uniform(-1, 1),
                                                                             random.uniform(-1, 1),
@@ -240,49 +240,44 @@ class ReynoldsGeneticAlgorithm:
         return chromosome
 
     # Creates 4 children from 2 parents
-    def breed_iterations(self, iteration_1, iteration_2, crossover_type=0):
+    def breed_species(self, species_1, species_2, crossover_type=0):
         # Crossover
         # copy is use to ensure that the list values are exchanged and not the list values themselves
+        child_1, child_2 = copy.copy(species_1.get_genome()), copy.copy(
+            species_2.get_genome())
         if crossover_type == 1:
-            offspring_genome_1, offspring_genome_2 = copy.copy(iteration_1.get_genome()), copy.copy(iteration_2.get_genome())
-            offspring_genome_3, offspring_genome_4 = self.binary_choice_crossover_genes(
-                copy.copy(iteration_1.get_genome()), copy.copy(iteration_2.get_genome()))
+            child_3, child_4 = self.binary_choice_crossover_genes(
+                copy.copy(species_1.get_genome()), copy.copy(species_2.get_genome()))
         elif crossover_type == 2:
-            offspring_genome_1, offspring_genome_2 = copy.copy(iteration_1.get_genome()), copy.copy(iteration_2.get_genome())
-            offspring_genome_3, offspring_genome_4 = self.unbounded_gene_commingling(
-                copy.copy(iteration_1.get_genome()), copy.copy(iteration_2.get_genome()))
+            child_3, child_4 = self.unbounded_gene_commingling(
+                copy.copy(species_1.get_genome()), copy.copy(species_2.get_genome()))
         elif crossover_type == 3:
-            offspring_genome_1, offspring_genome_2 = copy.copy(iteration_1.get_genome()), copy.copy(iteration_2.get_genome())
-            offspring_genome_3, offspring_genome_4 = self.bounded_gene_commingling(
-                copy.copy(iteration_1.get_genome()), copy.copy(iteration_2.get_genome()))
+            child_3, child_4 = self.bounded_gene_commingling(
+                copy.copy(species_1.get_genome()), copy.copy(species_2.get_genome()))
         elif crossover_type == 4:
-            offspring_genome_1, offspring_genome_2 = copy.copy(iteration_1.get_genome()), copy.copy(iteration_2.get_genome())
-            offspring_genome_3, offspring_genome_4 = self.alternating_gene_commingling(
-                copy.copy(iteration_1.get_genome()), copy.copy(iteration_2.get_genome()))
+            child_3, child_4 = self.alternating_gene_commingling(
+                copy.copy(species_1.get_genome()), copy.copy(species_2.get_genome()))
         elif crossover_type == 5:
-            offspring_genome_1, offspring_genome_2 = copy.copy(iteration_1.get_genome()), copy.copy(iteration_2.get_genome())
-            offspring_genome_3, offspring_genome_4 = self.winner_take_all_gene_commingling(
-                copy.copy(iteration_1.get_genome()), copy.copy(iteration_2.get_genome()))
+            child_3, child_4 = self.winner_take_all_gene_commingling(
+                copy.copy(species_1.get_genome()), copy.copy(species_2.get_genome()))
         elif crossover_type == 6:
-            offspring_genome_1, offspring_genome_2 = copy.copy(iteration_1.get_genome()), copy.copy(iteration_2.get_genome())
-            offspring_genome_3, offspring_genome_4 = self.gene_commingling(
-                copy.copy(iteration_1.get_genome()), copy.copy(iteration_2.get_genome()))
+            child_3, child_4 = self.gene_commingling(
+                copy.copy(species_1.get_genome()), copy.copy(species_2.get_genome()))
         else:
-            offspring_genome_1, offspring_genome_2 = copy.copy(iteration_1.get_genome()), copy.copy(iteration_2.get_genome())
-            offspring_genome_3, offspring_genome_4 = self.crossover_genes(copy.copy(iteration_1.get_genome()),
-                                                                          copy.copy(iteration_2.get_genome()))
+            child_3, child_4 = self.crossover_genes(
+                copy.copy(species_1.get_genome()), copy.copy(species_2.get_genome()))
         # Mutations
-        offspring_genome_1 = self.mutate_genes(offspring_genome_1)
-        offspring_genome_2 = self.mutate_genes(offspring_genome_2)
-        offspring_genome_3 = self.mutate_genes(offspring_genome_3)
-        offspring_genome_4 = self.mutate_genes(offspring_genome_4)
+        child_1 = self.mutate_genes(child_1)
+        child_2 = self.mutate_genes(child_2)
+        child_3 = self.mutate_genes(child_3)
+        child_4 = self.mutate_genes(child_4)
 
         # Iteration creation
-        offspring_1 = ReynoldsIteration(self.cur_generation, 0, offspring_genome_1)
-        offspring_2 = ReynoldsIteration(self.cur_generation, 0, offspring_genome_2)
-        offspring_3 = ReynoldsIteration(self.cur_generation, 0, offspring_genome_3)
-        offspring_4 = ReynoldsIteration(self.cur_generation, 0, offspring_genome_4)
-        return offspring_1, offspring_2, offspring_3, offspring_4
+        child_species_1 = ReynoldsSpecies(self.cur_generation, 0, child_1)
+        child_species_2 = ReynoldsSpecies(self.cur_generation, 0, child_2)
+        child_species_3 = ReynoldsSpecies(self.cur_generation, 0, child_3)
+        child_species_4 = ReynoldsSpecies(self.cur_generation, 0, child_4)
+        return child_species_1, child_species_2, child_species_3, child_species_4
 
     def advance_generation(self, crossover_type=0):
         next_gen = []
@@ -294,7 +289,7 @@ class ReynoldsGeneticAlgorithm:
         while self.survivors:
             parent_1 = self.survivors.pop()
             parent_2 = self.survivors.pop()
-            child_list = self.breed_iterations(parent_1, parent_2, crossover_type)
+            child_list = self.breed_species(parent_1, parent_2, crossover_type)
             for child in child_list:
                 next_gen.append(child)
 
@@ -307,84 +302,77 @@ class SeededReynoldsGeneticAlgorithm(ReynoldsGeneticAlgorithm):
         super().__init__(generation_number, iteration_size, mutation_rate)
         self.iteration_list = []
         for i in range(self.max_iterations):
-            self.iteration_list.append(ReynoldsIteration(self.cur_generation, i+1,
-                                                         ReynoldsChromosome(random.uniform(-1, 1) + seed[0],
-                                                                            random.uniform(-1, 1) + seed[1],
-                                                                            random.uniform(-1, 1) + seed[2],
-                                                                            random.uniform(-1, 1) + seed[3],
-                                                                            random.uniform(-1, 1) + seed[4],
-                                                                            random.uniform(-1, 1) + seed[5])))
+            self.iteration_list.append(ReynoldsSpecies(self.cur_generation, i + 1,
+                                                       ReynoldsChromosome(random.uniform(-1, 1) + seed[0],
+                                                                          random.uniform(-1, 1) + seed[1],
+                                                                          random.uniform(-1, 1) + seed[2],
+                                                                          random.uniform(-1, 1) + seed[3],
+                                                                          random.uniform(-1, 1) + seed[4],
+                                                                          random.uniform(-1, 1) + seed[5])))
 
 
 def move_all_boids_genetic(boid_list, flock_manager, board_dims, playtime, iteration_chromosome=ReynoldsChromosome()):
     chromosome = iteration_chromosome
     # Create a dictionary of all boids by id to quickly search for boids by id values extracted from flock
     flock_list = flock_manager.get_flocks()
-    boid_dict = dict()
-    for boid in boid_list:
-        boid_dict.update({boid.get_id(): boid})
 
     for boid in boid_list:
         idx = 0
         for flock in flock_list:
-            b_id = boid.get_id()
-            if b_id in flock:
+            if boid in flock:
                 # Calculate components of our velocity based on various rules
-                v1 = cohesion_rule(boid, flock, boid_dict) * chromosome.cohesion_gene
-                v2 = separation_rule(boid, flock, boid_dict, chromosome.separation_gene)
-                v3 = alignment_rule(boid, flock, boid_dict) * chromosome.alignment_gene
+                if len(boid.connected_boids) > 1:
+                    v1 = cohesion_rule(boid, boid.connected_boids) * chromosome.cohesion_gene
+                    v2 = separation_rule(boid, boid.connected_boids, chromosome.separation_gene)
+                    v3 = alignment_rule(boid, boid.connected_boids) * chromosome.alignment_gene
+                else:
+                    v1 = v2 = v3 = Vector2D()
                 # Special rule to check if goal is visible
-                if boid.is_entity_visible(boid.get_direction_to_other(boid.nearest_goal)):
+                if boid.is_object_visible(boid.calc_angle_from_pos(boid.nearest_goal.get_position())):
                     v4 = tend_to_position(boid, boid.nearest_goal.get_position()) * chromosome.goal_seeking_gene
-                    # If you are close to the goal, get a boost to goal velocity
-                    if abs(boid.get_distance_to_other(boid.nearest_goal)) < boid.collision_range:
-                        v4 *= 2
                 else:
                     v4 = Vector2D(random.randrange(0.0, 2.0), random.randrange(0.0, 2.0))
                 v5 = avoid_walls(boid, board_dims) * chromosome.wall_avoidance_gene
 
                 dv = v1 + v2 + v3 + v4 + v5
-                dv *= boid.divergence
+                dv *= boid.get_divergence()
 
                 boid.update_velocity(dv)
-                boid.move_boid()
+                boid.update_position(board_dims)
 
                 boid.update_cost(flock_manager.get_thetas()[idx], flock_manager.get_goal_thetas()[idx], playtime)
             idx += 1
 
 
-# Encourage boids to form flocks
-def cohesion_rule(boid, flock, boid_dict):
+# Encourage boids to move towards flock center
+def cohesion_rule(boid, flock):
     center = Vector2D()
-    for mem in flock:
-        member = boid_dict.get(mem)
+    for member in flock:
         if member is not boid and member is not None:
-            center += member.velocity
-    center /= len(flock)
-    return center - boid.velocity
+            center += member.get_position()
+    center /= len(flock) - 1
+    return center - boid.get_position()
 
 
 # Encourage boids to avoid colliding as this causes mutual boid death
-def separation_rule(boid, flock, boid_dict, avoidance_gene):
+def separation_rule(boid, flock, avoidance_gene):
     avoid = Vector2D()
-    for mem in flock:
-        member = boid_dict.get(mem)
+    for member in flock:
         if member is not boid and member is not None:
-            if abs(member.get_position() - boid.get_position()) <= boid.separate_range:
+            if abs(member.get_position() - boid.get_position()) <= boid.too_close:
                 boid.cost += 1  # Increment cost if we are too close
                 avoid -= (member.get_position() - boid.get_position()) * avoidance_gene
-    return avoid
+    return avoid  - boid.get_velocity()
 
 
 # Encourage boids in a given flock to match the average velocity of the flock
-def alignment_rule(boid, flock, boid_dict):
+def alignment_rule(boid, flock):
     perceived_vel = Vector2D()
-    for mem in flock:
-        member = boid_dict.get(mem)
+    for member in flock:
         if member is not boid and member is not None:
-            perceived_vel += member.velocity
-    perceived_vel /= len(flock)
-    return perceived_vel - boid.velocity
+            perceived_vel += member.get_velocity()
+    perceived_vel /= len(flock) - 1
+    return perceived_vel - boid.get_velocity()
 
 
 # Encourage boids to head in the direction of the goal
@@ -396,14 +384,14 @@ def tend_to_position(boid, position):
 def avoid_walls(boid, board_dims):
     wall_avoid = Vector2D(0, 0)
     boid_pos = boid.get_position()
-    if boid_pos.x < boid.radius * 2:
-        wall_avoid.x = boid.radius
-    elif boid_pos.x >= board_dims[0] - boid.radius * 2:
-        wall_avoid.x = -boid.radius
+    if boid_pos.x < boid.height * 2:
+        wall_avoid.x = boid.height
+    elif boid_pos.x >= board_dims[0] - boid.height * 2:
+        wall_avoid.x = -boid.height
 
-    if boid_pos.y < boid.radius * 2:
-        wall_avoid.y = boid.radius
-    elif boid_pos.y >= board_dims[1] - boid.radius * 2:
-        wall_avoid.y = -boid.radius
+    if boid_pos.y < boid.height * 2:
+        wall_avoid.y = boid.height
+    elif boid_pos.y >= board_dims[1] - boid.height * 2:
+        wall_avoid.y = -boid.height
 
     return wall_avoid

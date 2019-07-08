@@ -20,7 +20,7 @@ EXIT = 0
 EVALUATE = 2
 
 # Format for update is completed_release.goal_number.update_number
-VERSION = "0.4.9"
+VERSION = "5.0.0"
 
 # TODO: Allow user to set number simulation iterations (continuous or N)
 # TODO: Allow user to choose which simulation will run on startup instead of by editing code
@@ -71,21 +71,29 @@ class SimulationManager:
         bonus = 0
         if survivors:
             for boid in survivors:
-                bonus += boid.score/self.playtime + 1
+                bonus += boid.get_score()/self.playtime + 1
         return bonus + score
 
     # Removes boids that have collided and adds scores
     def get_collisions(self, sim_score):
         for boid in self.boid_list:
-            col = boid.collided
+            col = boid.get_collisions()
             if col:
+                for c in col:
+                    if c in self.boid_list:
+                        # Account for cost when boids die, reward based on time alive out of full time
+                        sim_score -= c.get_cost()
+                        sim_score += c.get_live_time()/30
+                        self.boid_list.remove(c)
+                    # print("{} died due to a collision!".format(c.get_id()))
+                    del c
                 # Account for cost when boids die, reward based on time alive out of full time
-                sim_score -= boid.cost
-                sim_score += boid.live_time/30
+                sim_score -= boid.get_cost()
+                sim_score += boid.get_live_time()/30
                 self.boid_list.remove(boid)
                 # print("{} died due to a collision!".format(boid.get_id()))
                 del boid
-            elif boid.has_touched_goal():
+            elif boid.get_touched():
                 # print("Boid {} scored a point by touching goal {}".format(boid.get_id(), boid.nearest_goal.get_id()))
                 sim_score += self.flock_manager.update_flock_score(boid.get_id(), self.boid_list)
                 # temporary goal redeployment
@@ -119,34 +127,6 @@ class SimulationManager:
 
         return game_state
 
-    @staticmethod
-    # TODO: This needs to be updated to work with new vectors
-    # Default keyboard controls
-    def key_movement(presses, run, boid):
-        new_vel = boid.get_speed()
-        new_dir = boid.get_direction()
-        for event in pygame.event.get():
-            # Check for quit
-            if event.type == pygame.QUIT or presses[pygame.K_ESCAPE]:
-                run = EXIT
-        if presses[pygame.K_DOWN]:
-            if new_vel <= 0.04:
-                new_vel = 0
-            else:
-                new_vel -= 0.05
-        # Adjust heading
-        if presses[pygame.K_LEFT]:
-            new_dir += 1
-        elif presses[pygame.K_RIGHT]:
-            new_dir -= 1
-        # Adjust velocity
-        if presses[pygame.K_UP]:
-            if new_vel >= 2:
-                new_vel = 2
-            else:
-                new_vel += 0.05
-        return run, new_vel, new_dir
-
     def iteration_loop(self, genome, gen_num, iter_num):
         self.playtime = 0
         num_flocks = 0
@@ -156,7 +136,7 @@ class SimulationManager:
         while game_state != EXIT:
             if self.playtime > 30:
                 for boid in self.boid_list:
-                    sim_score -= boid.cost
+                    sim_score -= boid.get_cost()
                 fitness = self.fitness_function(sim_score, self.boid_list)
                 print("Fitness was: {}".format(fitness))
                 print("This sim was run for {0:.2f} seconds before finishing".format(self.playtime))
@@ -175,8 +155,8 @@ class SimulationManager:
 
             # Setup connections and look for goals
             for temp_boid in self.boid_list:
-                temp_boid.update_connected_boids(self.boid_list)
-                temp_boid.update_nearest_goal(self.goal_list)
+                temp_boid.find_connections(self.boid_list)
+                temp_boid.find_nearest_goal(self.goal_list)
 
             # Look for all collisions and handle accordingly
             sim_score = self.get_collisions(sim_score)
@@ -288,8 +268,8 @@ class SimulationManager:
 
             # Setup connections and look for goals
             for temp_boid in self.boid_list:
-                temp_boid.update_connected_boids(self.boid_list)
-                temp_boid.update_nearest_goal(self.goal_list)
+                temp_boid.find_connections(self.boid_list)
+                temp_boid.find_nearest_goal(self.goal_list)
 
             # Look for all collisions and handle accordingly
             sim_score = self.get_collisions(sim_score)
@@ -308,7 +288,7 @@ class SimulationManager:
             # -0.18180729355868763, 0.8241052487791916, 0.7028804320371147, -0.636696685674897, 0.07406855363421672, 0.6906995399561737
             # 5.102145871473336, 0.12225270560240276, -0.4907147143031878, 0.20564065542552967, -0.5995262699036377, -0.8545783665976601
             # -0.4674356703062049, 0.3025268101184942, 0.09942988837552422, -0.5665319558040931, -0.9697534112418487, 0.441
-            genome = ReynoldsChromosome(1.8372722571243953, 0.6261830217695918, 0.0038880012734294755, 0.24024522715113705, 1.6372338714481125, 1.035034599431479)
+            genome = ReynoldsChromosome(1/7.5, 1, 1/2, 1, 1, 1.1)
             move_all_boids_genetic(self.boid_list, self.flock_manager,
                                    (self.window_width, self.sim_area_height), self.playtime, genome)
 

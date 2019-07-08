@@ -59,16 +59,14 @@ class FlockManager:
                 # the list of boids passed in from the game manager. If we change the list to a dictionary we won't
                 # need to cross reference and lookup will be faster, but that may cause issues, hence the nastiness
                 for member in flock:
-                    for b in boids:
-                        if b.get_id() == member:
-                            # Each boid is awarded points equal to either the length of the flock or the pref. flock
-                            # size, whichever is smaller. We also check to make sure the awards are in bounds
-                            if 0 <= award < self.pref_flock_members:
-                                b.increment_score(award)
-                                total += award
-                            elif self.pref_flock_members <= award < self.max_flock_members:
-                                b.increment_score(self.pref_flock_members)
-                                total += self.pref_flock_members
+                    # Each boid is awarded points equal to either the length of the flock or the pref. flock
+                    # size, whichever is smaller. We also check to make sure the awards are in bounds
+                    if 0 <= award < self.pref_flock_members:
+                        member.increment_score(award)
+                        total += award
+                    elif self.pref_flock_members <= award < self.max_flock_members:
+                        member.increment_score(self.pref_flock_members)
+                        total += self.pref_flock_members
         return total
 
     # Calculates the position of centroids, the value of average thetas, and the scores for each flock
@@ -89,18 +87,15 @@ class FlockManager:
             # More nasty cross referencing, see update_flock_scores()
             visible_goals = 0
             for member in flock:
-                for boid in boids:
-                    # Gather data for each boid
-                    if boid.get_id() == member:
-                        t = boid.get_position()
-                        sum_vel += boid.velocity
-                        sum_x += t.x
-                        sum_y += t.y
-                        sum_theta += boid.get_direction()
-                        score += boid.score
-                        if boid.get_goal_direction() != -1:
-                            sum_goal_theta += boid.get_goal_direction()
-                            visible_goals += 1
+                t = member.get_position()
+                sum_vel += member.get_velocity()
+                sum_x += t[0]
+                sum_y += t[1]
+                sum_theta += member.get_direction()
+                score += member.get_score()
+                if member.get_goal_dir() != -1:
+                    sum_goal_theta += member.get_goal_dir()
+                    visible_goals += 1
             # Append each new value so that the indexes for the data match those of the flocks
             cent.append(Vector2D(sum_x/len(flock), sum_y/len(flock)))  # just the average position of each boid
             thetas.append(sum_theta/len(flock))  # this does not seem right, but it works anyway ¯\_(ツ)_/¯
@@ -124,29 +119,20 @@ class FlockManager:
         flocks = []
         for boid in boids:
             # Extract all the boid IDs to the list of new connections, con
-            con = [boid.get_id()]
-            for entry in boid.connected_boids:
-                con.append(entry[0])
+            con = []
+            for entry in boid.get_connected_boids():
+                con.append(entry)
             # Begin placing con into flocks
-            # When flocks is empty, add the current con to the list of flocks
-            if not flocks:
+            # Check for overlap and add to list if overlap exists
+            for flock in flocks:
+                for entry in con:
+                    if entry in flock:
+                        update = set(con).union(set(flock))
+                        con.extend(update)
+                        flocks.remove(flock)
+                        del flock
+                        break
+            con = list(set(con))
+            if con not in flocks:
                 flocks.append(con)
-            # If flocks exist, check for overlap and add to list if overlap exists
-            else:
-                placed = False
-                for flock in flocks:
-                    if (not set(flock).isdisjoint(set(con))) or (not set(con).isdisjoint(set(flock))):
-                        update = set(flock).union(set(con))
-                        flock.extend(update)
-                        placed = True
-                if not placed:
-                    flocks.append(con)
-        # One final pass to remove duplicates and merge any lingering overlaps, may be superfluous
-        for flock in flocks:
-            ext = False
-            for final in self.flock_list:
-                if (not set(flock).isdisjoint(set(final))) or (not set(final).isdisjoint(set(flock))):
-                    list(final).extend(set(flock).union(set(final)))
-                    ext = True
-            if set(flock) not in self.flock_list and not ext:
-                self.flock_list.append(set(flock))
+        self.flock_list = flocks
