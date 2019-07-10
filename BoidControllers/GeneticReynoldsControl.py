@@ -7,7 +7,7 @@ Pyboids - GeneticReynoldsControl
 import copy
 import random
 import statistics
-from Entities.Vector2D import Vector2D
+from BoidControllers.BoidRules import *
 
 # TODO: Allow user to set the number of generations to breed or to breed until stopped
 
@@ -63,16 +63,16 @@ class ReynoldsChromosome:
 
 
 class ReynoldsSpecies:
-    def __init__(self, generation_number=0, iteration_number=0, genome=ReynoldsChromosome()):
+    def __init__(self, generation_number=0, species_number=0, genome=ReynoldsChromosome()):
         self.generation_number = generation_number
-        self.iteration_number = iteration_number
+        self.species_number = species_number
         self.survivor_number = 0
-        self.livetime = 0
+        self.live_time = 0
         self.genome = genome
         self.performance = 1.0
 
-    def update_livetime(self, val):
-        self.livetime = val
+    def update_live_time(self, val):
+        self.live_time = val
 
     def update_survivors(self, val):
         self.survivor_number = val
@@ -87,57 +87,53 @@ class ReynoldsSpecies:
         return self.genome
 
     def get_id(self):
-        return self.iteration_number
+        return self.species_number
 
     def get_performance(self):
         return self.performance
 
     def get_livetime(self):
-        return self.livetime
+        return self.live_time
 
     def get_survivors(self):
         return self.survivor_number
 
     def set_id(self, value):
-        self.iteration_number = value
+        self.species_number = value
 
 
 class ReynoldsGeneticAlgorithm:
-    def __init__(self, generation_number, iteration_size, mutation_rate):
-        self.cur_generation = 0  # This tracks which generation we are on
+    def __init__(self, generation_number, max_species, mutation_rate):
+        self.generation_number = 0  # This tracks which generation we are on
         self.max_generation = generation_number  # This indicates which generation to terminate on
-        self.max_iterations = iteration_size  # This indicates how many iterations to create every generation
+        self.max_species = max_species  # This indicates how many species to create every generation
         self.mutation_rate = mutation_rate  # This is the rate at which genes will randomly mutate
         self.genetic_history_best_performers = []  # This tracks the chromosomes used by the best of each iteration
         self.genetic_history = []  # This tracks the chromosomes used by each iteration each generation
-        self.iteration_list = []  # This tracks the iterations used each generation, this is cleared once per gen
+        self.species_list = []  # This tracks the iterations used each generation, this is cleared once per gen
         self.survivors = []  # This tracks the iterations that survive after each culling
 
-        for i in range(self.max_iterations):
-            self.iteration_list.append(ReynoldsSpecies(self.cur_generation, i + 1,
-                                                       ReynoldsChromosome(random.uniform(-1, 1),
-                                                                            random.uniform(-1, 1),
-                                                                            random.uniform(-1, 1),
-                                                                            random.uniform(-1, 1),
-                                                                            random.uniform(-1, 1),
-                                                                            random.uniform(-1, 1))))
+        for i in range(self.max_species):
+            self.species_list.append(ReynoldsSpecies(self.generation_number, i + 1, ReynoldsChromosome(
+                random.uniform(-1, 1), random.uniform(-1, 1), random.uniform(-1, 1),
+                random.uniform(-1, 1), random.uniform(-1, 1), random.uniform(-1, 1))))
 
-    def get_iteration_list(self):
-        return self.iteration_list
+    def get_species_list(self):
+        return self.species_list
 
     def cull_bottom_half(self):
-        iteration_performances = []
+        species_performances = []
         self.survivors = []
 
-        for iteration in self.iteration_list:
-            iteration_performances.append(iteration.performance)
-        median = statistics.median(iteration_performances)
+        for species in self.species_list:
+            species_performances.append(species.performance)
+        median = statistics.median(species_performances)
 
-        for iteration in self.iteration_list:
-            if iteration.performance >= median and len(self.survivors) < self.max_iterations/2:
-                print("Gen {} Iter {} survived and will breed".format(self.cur_generation, iteration.get_id()))
-                self.survivors.append(iteration)
-            if len(self.survivors) == self.max_iterations/2:
+        for species in self.species_list:
+            if species.performance >= median and len(self.survivors) < self.max_species/2:
+                print("Gen {} species {} survived and will breed".format(self.generation_number, species.get_id()))
+                self.survivors.append(species)
+            if len(self.survivors) == self.max_species/2:
                 break
 
     @staticmethod
@@ -273,10 +269,10 @@ class ReynoldsGeneticAlgorithm:
         child_4 = self.mutate_genes(child_4)
 
         # Iteration creation
-        child_species_1 = ReynoldsSpecies(self.cur_generation, 0, child_1)
-        child_species_2 = ReynoldsSpecies(self.cur_generation, 0, child_2)
-        child_species_3 = ReynoldsSpecies(self.cur_generation, 0, child_3)
-        child_species_4 = ReynoldsSpecies(self.cur_generation, 0, child_4)
+        child_species_1 = ReynoldsSpecies(self.generation_number, 0, child_1)
+        child_species_2 = ReynoldsSpecies(self.generation_number, 0, child_2)
+        child_species_3 = ReynoldsSpecies(self.generation_number, 0, child_3)
+        child_species_4 = ReynoldsSpecies(self.generation_number, 0, child_4)
         return child_species_1, child_species_2, child_species_3, child_species_4
 
     def advance_generation(self, crossover_type=0):
@@ -293,16 +289,16 @@ class ReynoldsGeneticAlgorithm:
             for child in child_list:
                 next_gen.append(child)
 
-        self.iteration_list = next_gen
-        self.cur_generation += 1
+        self.species_list = next_gen
+        self.generation_number += 1
 
 
 class SeededReynoldsGeneticAlgorithm(ReynoldsGeneticAlgorithm):
-    def __init__(self, generation_number, iteration_size, mutation_rate, seed):
-        super().__init__(generation_number, iteration_size, mutation_rate)
+    def __init__(self, generation_number, max_species, mutation_rate, seed):
+        super().__init__(generation_number, max_species, mutation_rate)
         self.iteration_list = []
-        for i in range(self.max_iterations):
-            self.iteration_list.append(ReynoldsSpecies(self.cur_generation, i + 1,
+        for i in range(self.max_species):
+            self.iteration_list.append(ReynoldsSpecies(self.generation_number, i + 1,
                                                        ReynoldsChromosome(random.uniform(-1, 1) + seed[0],
                                                                           random.uniform(-1, 1) + seed[1],
                                                                           random.uniform(-1, 1) + seed[2],
@@ -317,9 +313,8 @@ def move_all_boids_genetic(boid_list, flock_manager, board_dims, playtime, itera
     flock_list = flock_manager.get_flocks()
 
     for boid in boid_list:
-        idx = 0
         for flock in flock_list:
-            if boid in flock:
+            if boid in flock.flock_members:
                 # Calculate components of our velocity based on various rules
                 if len(boid.connected_boids) > 1:
                     v1 = cohesion_rule(boid, boid.connected_boids) * chromosome.cohesion_gene
@@ -340,58 +335,6 @@ def move_all_boids_genetic(boid_list, flock_manager, board_dims, playtime, itera
                 boid.update_velocity(dv)
                 boid.update_position(board_dims)
 
-                boid.update_cost(flock_manager.get_thetas()[idx], flock_manager.get_goal_thetas()[idx], playtime)
-            idx += 1
+                boid.update_cost(flock, playtime)
 
 
-# Encourage boids to move towards flock center
-def cohesion_rule(boid, flock):
-    center = Vector2D()
-    for member in flock:
-        if member is not boid and member is not None:
-            center += member.get_position()
-    center /= len(flock) - 1
-    return center - boid.get_position()
-
-
-# Encourage boids to avoid colliding as this causes mutual boid death
-def separation_rule(boid, flock, avoidance_gene):
-    avoid = Vector2D()
-    for member in flock:
-        if member is not boid and member is not None:
-            if abs(member.get_position() - boid.get_position()) <= boid.too_close:
-                boid.cost += 1  # Increment cost if we are too close
-                avoid -= (member.get_position() - boid.get_position()) * avoidance_gene
-    return avoid  - boid.get_velocity()
-
-
-# Encourage boids in a given flock to match the average velocity of the flock
-def alignment_rule(boid, flock):
-    perceived_vel = Vector2D()
-    for member in flock:
-        if member is not boid and member is not None:
-            perceived_vel += member.get_velocity()
-    perceived_vel /= len(flock) - 1
-    return perceived_vel - boid.get_velocity()
-
-
-# Encourage boids to head in the direction of the goal
-def tend_to_position(boid, position):
-    return position - boid.get_position()
-
-
-# Encourage boids to avoid walls as they can increase chance of collision
-def avoid_walls(boid, board_dims):
-    wall_avoid = Vector2D(0, 0)
-    boid_pos = boid.get_position()
-    if boid_pos.x < boid.height * 2:
-        wall_avoid.x = boid.height
-    elif boid_pos.x >= board_dims[0] - boid.height * 2:
-        wall_avoid.x = -boid.height
-
-    if boid_pos.y < boid.height * 2:
-        wall_avoid.y = boid.height
-    elif boid_pos.y >= board_dims[1] - boid.height * 2:
-        wall_avoid.y = -boid.height
-
-    return wall_avoid

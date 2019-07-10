@@ -6,18 +6,35 @@ Pyboids - FlockManager
 from Entities.Vector2D import Vector2D
 
 
+class Flock:
+    def __init__(self, member_list=None):
+        self.flock_members = member_list  # List of boids that are flock members
+        self.flock_centroid = Vector2D()  # Position vector representing the virtual centroid of the flock
+        self.flock_velocity = Vector2D()  # Velocity vector representing the perceived velocity of the flock
+        self.flock_goal = None            # This will contain an entity representing the most common goal of the flock
+        self.flock_score = 0              # The combined score of all members of the flock
+
+    # TODO: Move this to flock class and clean up
+    # Calculates the position of centroids, the value of average thetas, and the scores for each flock
+    def calc_flock_data(self):
+        sum_pos = Vector2D()
+        sum_vel = Vector2D(0, 0)
+        score = 0
+        # More nasty cross referencing, see update_flock_scores()
+        for member in self.flock_members:
+            sum_vel += member.get_velocity()
+            sum_pos += member.get_position()
+            score += member.get_score()
+        # Append each new value so that the indexes for the data match those of the flocks
+        self.flock_centroid = sum_pos/len(self.flock_members)  # the average position of each boid
+        self.flock_velocity = sum_vel/len(self.flock_members)  # the average velocity of each boid
+        self.flock_score = score  # scores are aggregated from boids to account for changes in flock members
+
+
 class FlockManager:
     def __init__(self):
-        # Set of flocks formed each frame by manager
-        self.flock_list = []
-        # Data corresponding to each flock
-        # These should always have the same order as flocks
-        self.flock_centroids = []
-        self.flock_thetas = []
-        self.flock_goal_thetas = []
-        self.flock_velocities = []
-        # This will need to be implemented
-        self.flock_scores = [0]
+        self.flock_list = []  # List of flocks formed each frame by manager
+
         # These are currently unused, but would control the flock size
         # Score should be updated such that when the number of flock members is under pref_flock_members the flock gets
         # One point for each member of the flock. If the flock size goes over pref_flock_members, only
@@ -29,28 +46,13 @@ class FlockManager:
     def get_flocks(self):
         return self.flock_list
 
-    def get_centroids(self):
-        return self.flock_centroids
-
-    def get_thetas(self):
-        return self.flock_thetas
-
-    def get_scores(self):
-        return self.flock_scores
-
-    def get_goal_thetas(self):
-        return self.flock_goal_thetas
-
-    def get_velocities(self):
-        return self.flock_velocities
-
     # Ensures that when a flock member collides with a goal, each member of the flock gets awarded some points
-    def update_flock_score(self, boid, boids):
+    def update_flock_score(self, boid):
         total = 0
         # First find the relevant flock
         for flock in self.flock_list:
-            award = len(flock)
-            if boid in flock:
+            award = len(flock.flock_members)
+            if boid in flock.flock_members:
                 # If the flock is too big, it won't score, so we can break
                 if self.max_flock_members <= award:
                     break
@@ -58,7 +60,7 @@ class FlockManager:
                 # Since FlockManager doesn't actually store boids, just their ids, we have to cross reference
                 # the list of boids passed in from the game manager. If we change the list to a dictionary we won't
                 # need to cross reference and lookup will be faster, but that may cause issues, hence the nastiness
-                for member in flock:
+                for member in flock.flock_members:
                     # Each boid is awarded points equal to either the length of the flock or the pref. flock
                     # size, whichever is smaller. We also check to make sure the awards are in bounds
                     if 0 <= award < self.pref_flock_members:
@@ -70,47 +72,10 @@ class FlockManager:
         return total
 
     # Calculates the position of centroids, the value of average thetas, and the scores for each flock
-    def calc_flock_data(self, boids):
-        cent = []
-        thetas = []
-        scores = []
-        goals = []
-        vels = []
+    def calc_flock_data(self):
         # Gather data for each flock
         for flock in self.flock_list:
-            sum_x = 0
-            sum_y = 0
-            sum_theta = 0
-            sum_goal_theta = 0
-            sum_vel = Vector2D(0, 0)
-            score = 0
-            # More nasty cross referencing, see update_flock_scores()
-            visible_goals = 0
-            for member in flock:
-                t = member.get_position()
-                sum_vel += member.get_velocity()
-                sum_x += t[0]
-                sum_y += t[1]
-                sum_theta += member.get_direction()
-                score += member.get_score()
-                if member.get_goal_dir() != -1:
-                    sum_goal_theta += member.get_goal_dir()
-                    visible_goals += 1
-            # Append each new value so that the indexes for the data match those of the flocks
-            cent.append(Vector2D(sum_x/len(flock), sum_y/len(flock)))  # just the average position of each boid
-            thetas.append(sum_theta/len(flock))  # this does not seem right, but it works anyway ¯\_(ツ)_/¯
-            if visible_goals != 0:
-                goals.append(sum_goal_theta / visible_goals)
-            else:
-                goals.append(-1)
-            vels.append(sum_vel/len(flock))
-            scores.append(score)  # scores are aggregated from boids to account for changes in flock members
-            # Clear everything to ensure no references to nonexistent flocks
-            self.flock_centroids = cent
-            self.flock_thetas = thetas
-            self.flock_scores = scores
-            self.flock_goal_thetas = goals
-            self.flock_velocities = vels
+            flock.calc_flock_data()
 
     # calculates the number of flocks and stores their members as a list of lists
     # When the boids move quickly, the flocks sometime do not make sense, this is being examined
@@ -126,13 +91,13 @@ class FlockManager:
             # Check for overlap and add to list if overlap exists
             for flock in flocks:
                 for entry in con:
-                    if entry in flock:
-                        update = set(con).union(set(flock))
+                    if entry in flock.flock_members:
+                        update = set(con).union(set(flock.flock_members))
                         con.extend(update)
                         flocks.remove(flock)
                         del flock
                         break
             con = list(set(con))
             if con not in flocks:
-                flocks.append(con)
+                flocks.append(Flock(con))
         self.flock_list = flocks

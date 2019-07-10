@@ -6,6 +6,8 @@ Pyboids - Entities
 import math
 from Entities import Vector2D
 
+MAX_VELOCITY = 2.5
+
 
 class Entity:
     def __init__(self, entity_id, x_pos, y_pos):
@@ -21,26 +23,27 @@ class Entity:
 
 class Boid(Entity):
 
-    def __init__(self, boid_id, x, y, side_len, divergence_value=1):
+    def __init__(self, boid_id, x, y, radius, divergence_value=1):
+        # TODO Draw too_close and too_far and create a set collide distance
         super().__init__(boid_id, x, y)
-        self.height = math.sqrt(3) * (side_len // 2)  # used in display calculations
-        self.too_close = self.height * 3  # used to determine when boids should avoid each other
-        self.too_far = (self.height ** 2) * 100  # used to determine when the boids are too far to flock
-        self.vel = Vector2D.Vector2D()  # current velocity of the boid
-        self.my_dir = 0  # current heading of the boid
-        self.divergence = divergence_value  # currently unused, but would account for random movement between boids
+        self.radius = radius                            # used in display calculations
+        self.too_close = self.radius * 4                # used to determine when boids should avoid each other
+        self.too_far = self.radius * 800                # used to determine when the boids are too far to flock
+        self.vel = Vector2D.Vector2D()                  # current velocity of the boid
+        self.my_dir = 0                                 # current heading of the boid
+        self.divergence = divergence_value              # used to produce random movement between boids
 
-        self.connected_boids = []  # list of all visible boids in range, their ids, and positions used to form flocks
-        self.visible_boids = []  # List of all visible boids, used to encourage flocking by showing possible options
-        self.collisions = []  # list of boids we are too close to
+        self.connected_boids = []                       # list of all visible boids in range
+        self.visible_boids = []                         # List of all visible boids
+        self.collisions = []                            # list of boids we are too close to
         
-        self.touched_goal = False  # used to alert manager when a coin is touched
-        self.nearest_goal = Entity(0, 0, 0)  # used in boid movement and flock formation
-        self.goal_dir = 0  # direction of nearest goal relative to boid
+        self.touched_goal = False                       # used to alert manager when a coin is touched
+        self.nearest_goal = Entity(0, 0, 0)             # used in boid movement and flock formation
+        self.goal_dir = 0                               # direction of nearest goal relative to boid
         
-        self.score = 0  # used as part of evaluating the fitness of the model
-        self.cost = 0  # used as part of evaluating the fitness of the model
-        self.live_time = 0  # used as part of evaluating the fitness of the model
+        self.score = 0                                  # used as part of evaluating the fitness of the model
+        self.cost = 0                                   # used as part of evaluating the fitness of the model
+        self.live_time = 0                              # used as part of evaluating the fitness of the model
 
     # Returns the magnitude of the velocity vector
     def get_speed(self):
@@ -67,8 +70,8 @@ class Boid(Entity):
     def get_score(self):
         return self.score
 
-    def get_height(self):
-        return self.height
+    def get_radius(self):
+        return self.radius
 
     def get_velocity(self):
         return self.vel
@@ -88,15 +91,15 @@ class Boid(Entity):
     def update_velocity(self, val):
         val += self.vel
         # Velocity limiting rules
-        if val.x >= 2.5:
-            val.x = 2.5
-        elif val.x <= -2.5:
-            val.x = -2.5
+        if val.x >= MAX_VELOCITY:
+            val.x = MAX_VELOCITY
+        elif val.x <= -MAX_VELOCITY:
+            val.x = -MAX_VELOCITY
 
-        if val.y >= 2.5:
-            val.y = 2.5
-        elif val.y <= -2.5:
-            val.y = -2.5
+        if val.y >= MAX_VELOCITY:
+            val.y = MAX_VELOCITY
+        elif val.y <= -MAX_VELOCITY:
+            val.y = -MAX_VELOCITY
 
         self.vel = val
 
@@ -106,15 +109,15 @@ class Boid(Entity):
         x = self.pos[0]
         y = self.pos[1]
         # Change our x position
-        if x >= board_dims[0] - self.height // 2:
-            x = board_dims[0] - self.height // 2
-        if x < self.height // 2:
-            x = self.height // 2
+        if x >= board_dims[0] - self.radius:
+            x = board_dims[0] - self.radius
+        if x < self.radius:
+            x = self.radius
         # Change our y position
-        if y >= board_dims[1] - 3 * self.height // 4:
-            y = board_dims[1] - 3 * self.height // 4
-        if y < 12 + self.height // 2:  # 12 is the height of the text display at the top
-            y = 12 + self.height // 2
+        if y >= board_dims[1] - self.radius:
+            y = board_dims[1] - self.radius
+        if y < 12 + self.radius:  # 12 is the height of the text display at the top
+            y = 12 + self.radius
         self.pos = Vector2D.Vector2D(x, y)
         self.my_dir = (180 + self.vel.argument()) % 360
 
@@ -122,11 +125,14 @@ class Boid(Entity):
     def increment_score(self, val=1):
         self.score += val
 
-    def update_cost(self, flock_dir, flock_goal_dir, playtime):
+    def update_cost(self, flock, playtime):
         # penalty for not following the same average dir as the flock
-        self.cost += (self.my_dir - flock_dir)/100
+        self.cost += abs((self.my_dir - flock.flock_velocity.argument())/360)
         # penalty for not heading towards the goal
-        self.cost += (self.my_dir - self.goal_dir) / 100
+        if self.goal_dir != -1:  # Small penalty if visible
+            self.cost += abs((self.my_dir - self.goal_dir)/360)
+        else:  # Large penalty if not visible
+            self.cost += 360
         # penalty for not heading towards the flock's perceived goal direction
         # self.cost += (self.my_dir - flock_goal_dir)/100
 
@@ -170,7 +176,7 @@ class Boid(Entity):
                 if self.is_object_visible(theta) and dist <= self.too_far:
                     self.connected_boids.append(temp_boid)
                 # If the boid is too close, add it to our collision list and remove it from our connections if present
-                if dist < self.height:
+                if dist <= self.radius * 2:
                     self.collisions.append(temp_boid)
                     if temp_boid in self.connected_boids:
                         self.connected_boids.remove(temp_boid)
@@ -183,7 +189,7 @@ class Boid(Entity):
                 if abs(goal.get_position() - self.pos) < abs(nearest.get_position() - self.pos):
                     nearest = goal
         self.nearest_goal = nearest
-        if not self.touched_goal and self.calc_dist_to_object(self.nearest_goal.get_position()) < 64:
+        if not self.touched_goal and self.calc_dist_to_object(self.nearest_goal.get_position()) < self.radius*2:
             self.touched_goal = True
         else:
             self.touched_goal = False

@@ -16,9 +16,8 @@ GOLD = (128, 128, 64)
 
 
 class DisplayManager:
-    def __init__(self, pygame, board_dims, sim_height):
+    def __init__(self, pygame, board_dims, sim_height, boid_radius):
         self.pygame = pygame
-        self.font = pygame.font.SysFont('mono', 12, bold=True)
 
         self.window_width = board_dims[0]
         self.window_height = board_dims[1]
@@ -28,28 +27,30 @@ class DisplayManager:
         self.background = pygame.Surface(self.screen.get_size()).convert()
         self.background.fill(BLACK)
 
+        self.boid_image = pygame.image.load("Sprites/boid_sprite.png")
+        self.boid_image.convert_alpha(self.boid_image)
+        self.boid_image = self.pygame.transform.smoothscale(self.boid_image, (boid_radius*2, boid_radius*2))
+        self.font = pygame.font.SysFont('mono', 12, bold=True)
+
     def display_flock_data(self, flocks):
         flock_list = flocks.get_flocks()
-        flock_thetas = flocks.get_thetas()
-        flock_goals = flocks.get_goal_thetas()
-        flock_centroids = flocks.get_centroids()
-        flock_scores = flocks.get_scores()
         monitor = self.pygame.Surface((self.window_width, self.window_height - self.sim_area_height))
         monitor.blit(
             self.font.render("Number  |     Centroids    |  Direction  |  Goal Direction  |  Score  |  Members", True,
                              GREEN), (11, 0))
 
         i = 0
-        for i in range(len(flock_list)):
+        for flock in flock_list:
             members = []
-            for member in flock_list[i]:
+            for member in flock.flock_members:
                 members.append(member.get_id())
-            cent = "{:3.2f}, {:3.2f}".format(flock_centroids[i][0], flock_centroids[i][1])
+            cent = "{:3.2f}, {:3.2f}".format(flock.flock_centroid.x, flock.flock_centroid.y)
             string = "{0:^6}{1:^5s}{2:^15}{1:^4s}{3:^10.2f}{1:^4s}{4:^14.2f}{1:^5s}{5:^6d}{1:^4s}{6:}"\
-                .format(i + 1, "|", cent, flock_thetas[i], flock_goals[i], flock_scores[i], members)
+                .format(i + 1, "|", cent, flock.flock_velocity.argument(), -1, flock.flock_score, members)
             monitor.blit(self.font.render(string, True, GREEN), (12, (i+1) * 13))
             self.pygame.draw.line(monitor, GREEN, (0, (i+1) * 13), (self.window_width, (i + 1) * 13))
-        self.pygame.draw.line(monitor, GREEN, (0, (i + 2) * 13), (self.window_width, (i + 2) * 13))
+            i += 1
+        self.pygame.draw.line(monitor, GREEN, (0, (i + 1) * 13), (self.window_width, (i + 1) * 13))
         self.screen.blit(monitor, (0, self.sim_area_height+1))
 
     # Displays monitoring data at the top of the screen
@@ -73,22 +74,17 @@ class DisplayManager:
     def display_boid(self, boid, draw_details):
         x = boid.get_position().x
         y = boid.get_position().y
-        height = boid.get_height()
         angle = boid.my_dir
-        points = [(int(height // 2), 0),
-                  (0, int(height)),
-                  (int(height), int(height))]
-        surface = self.pygame.Surface((height, height))
-        surface.convert_alpha(surface)
-        self.pygame.draw.polygon(surface, GREEN, points)
-        surface.set_colorkey(BLACK)
-        self.screen.blit(self.pygame.transform.rotozoom(surface, angle, 1), (x - height // 2, y - height // 2))
+        boid_shape = self.boid_image
+        boid_rect = boid_shape.get_rect(center=(x, y))
+        boid_shape = self.pygame.transform.rotozoom(boid_shape, angle, 1)
+        self.screen.blit(boid_shape, boid_rect)
         if draw_details:
             b_id = boid.get_id()
             txt_surface = self.pygame.font.SysFont('mono', 10, bold=False).render(str(b_id), True, (0, 255, 0))
             self.pygame.draw.arc(self.background, GOLD, [x - boid.too_close, y - boid.too_close, 60, 60],
                                  radians(angle - 135 + 90), radians(angle + 135 + 90))
-            self.screen.blit(txt_surface, (x - 2, y + 3 * height // 4))
+            self.screen.blit(txt_surface, (x, y))
 
     # Draws shapes representing the centroids of the flocks of boid objects as well as the velocity of the flocks
     def display_flock_centroid_vectors(self, pos, angle):
@@ -113,10 +109,8 @@ class DisplayManager:
         for goal in goals:
             self.display_goal(goal.get_position(), 3)
         if draw_details:
-            idx = 0
-            for centroid in flocks.get_centroids():
-                self.display_flock_centroid_vectors(centroid, flocks.get_velocities()[idx])
-                idx += 1
+            for flock in flocks.get_flocks():
+                self.display_flock_centroid_vectors(flock.flock_centroid, flock.flock_velocity)
         # Draw the flock data at the bottom
         self.display_flock_data(flocks)
         # Draw bottom line for sim area
