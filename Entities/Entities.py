@@ -6,7 +6,7 @@ Pyboids - Entities
 import math
 from Entities import Vector2D
 
-MAX_VELOCITY = 2.5
+MAX_VELOCITY = 3.5
 
 
 class Entity:
@@ -128,11 +128,9 @@ class Boid(Entity):
     def update_cost(self, flock, playtime):
         # penalty for not following the same average dir as the flock
         self.cost += abs((self.my_dir - flock.flock_velocity.argument())/360)
-        # penalty for not heading towards the goal
-        if self.goal_dir != -1:  # Small penalty if visible
-            self.cost += abs((self.my_dir - self.goal_dir)/360)
-        else:  # Large penalty if not visible
-            self.cost += 360
+        # penalty for not heading towards a goal
+        if self.goal_dir == -1:
+            self.cost += 1
         # penalty for not heading towards the flock's perceived goal direction
         # self.cost += (self.my_dir - flock_goal_dir)/100
 
@@ -176,7 +174,7 @@ class Boid(Entity):
                 if self.is_object_visible(theta) and dist <= self.too_far:
                     self.connected_boids.append(temp_boid)
                 # If the boid is too close, add it to our collision list and remove it from our connections if present
-                if dist <= self.radius * 2:
+                if dist <= self.radius * 3:
                     self.collisions.append(temp_boid)
                     if temp_boid in self.connected_boids:
                         self.connected_boids.remove(temp_boid)

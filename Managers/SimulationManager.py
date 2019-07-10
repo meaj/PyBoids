@@ -57,12 +57,12 @@ class SimulationManager:
 
         # Goal Deployment
         for i in range(0, 5):
-            self.goal_list.append(Entity(i, random.randrange(15, self.window_width - 15),
-                                         random.randrange(15, self.sim_area_height - 15)))
+            self.goal_list.append(Entity(i, random.randrange(boid_radius, self.window_width - boid_radius),
+                                         random.randrange(15 + boid_radius, self.sim_area_height - boid_radius)))
         # Boid Deployment
         for i in range(0, 32):
-            self.boid_list.append(Boid(i, random.randrange(15, self.window_width),
-                                       random.randrange(15, self.sim_area_height), boid_radius))
+            self.boid_list.append(Boid(i, random.randrange(boid_radius, self.window_width),
+                                       random.randrange(15 + boid_radius, self.sim_area_height), boid_radius))
 
     # This is the fitness function we will use to determine the overall "score" of an iteration of the AIs
     def fitness_function(self, score, survivors=None):
@@ -70,7 +70,7 @@ class SimulationManager:
         bonus = 0
         if survivors:
             for boid in survivors:
-                bonus += boid.get_score() * 2 + 1 + self.playtime
+                bonus += boid.get_score()*2 + self.playtime
         return bonus + score
 
     # Removes boids that have collided and adds scores
@@ -99,8 +99,10 @@ class SimulationManager:
                 sim_score += self.flock_manager.update_flock_score(boid)
                 # temporary goal redeployment
                 g_id = boid.nearest_goal.get_id()
-                self.goal_list[g_id] = Entity(g_id, random.randrange(15, self.window_width - 15),
-                                              random.randrange(15, self.sim_area_height - 15))
+                self.goal_list[g_id] = Entity(g_id, random.randrange(self.boid_radius,
+                                                                     self.window_width - self.boid_radius),
+                                              random.randrange(15 + self.boid_radius, self.sim_area_height -
+                                                               self.boid_radius))
         return sim_score
 
     # Check for keyboard input
@@ -191,7 +193,7 @@ class SimulationManager:
         # Create our algorithm manager with the number of generations from 0 to n,
         # the number of iterations per generation, and the mutation rate denominator
         # genetic_algorithm = ReynoldsGeneticAlgorithm(12, 12, 100)
-        genetic_algorithm = SeededReynoldsGeneticAlgorithm(12, 12, 25, [1, .25, 1/8, 1/128, 1, 1.1])
+        genetic_algorithm = SeededReynoldsGeneticAlgorithm(25, 12, 25, [1/7.5, 1, 1/2, 1, 1, 1.1])
         # Loop through each generation
         while genetic_algorithm.generation_number <= genetic_algorithm.max_generation:
             # Loop through each iteration

@@ -9,8 +9,6 @@ import random
 import statistics
 from BoidControllers.BoidRules import *
 
-# TODO: Allow user to set the number of generations to breed or to breed until stopped
-
 
 class ReynoldsChromosome:
     def __init__(self, m1=1, m2=1, m3=1, m4=1, m5=1, dv1=1.1):
@@ -318,23 +316,26 @@ def move_all_boids_genetic(boid_list, flock_manager, board_dims, playtime, itera
                 # Calculate components of our velocity based on various rules
                 if len(boid.connected_boids) > 1:
                     v1 = cohesion_rule(boid, boid.connected_boids) * chromosome.cohesion_gene
-                    v2 = separation_rule(boid, boid.connected_boids, chromosome.separation_gene)
+                    v2 = separation_rule(boid, boid.connected_boids) * chromosome.separation_gene
                     v3 = alignment_rule(boid, boid.connected_boids) * chromosome.alignment_gene
                 else:
                     v1 = v2 = v3 = Vector2D()
                 # Special rule to check if goal is visible
                 if boid.is_object_visible(boid.calc_angle_from_pos(boid.nearest_goal.get_position())):
-                    v4 = tend_to_position(boid, boid.nearest_goal.get_position()) * chromosome.goal_seeking_gene
+                    v4 = tend_to_position(boid, boid.nearest_goal.get_position())
                 else:
-                    v4 = Vector2D(random.randrange(0.0, 2.0), random.randrange(0.0, 2.0))
+                    v4 = Vector2D(random.randrange(-MAX_FORCE, MAX_FORCE), random.randrange(-MAX_FORCE, MAX_FORCE))
+                v4 *= chromosome.goal_seeking_gene
                 v5 = avoid_walls(boid, board_dims) * chromosome.wall_avoidance_gene
 
                 dv = v1 + v2 + v3 + v4 + v5
+
                 dv *= boid.get_divergence()
 
                 boid.update_velocity(dv)
                 boid.update_position(board_dims)
 
                 boid.update_cost(flock, playtime)
+
 
 

@@ -51,10 +51,10 @@ class FlockManager:
         total = 0
         # First find the relevant flock
         for flock in self.flock_list:
-            award = len(flock.flock_members)
+            award = len(flock.flock_members) * 10
             if boid in flock.flock_members:
                 # If the flock is too big, it won't score, so we can break
-                if self.max_flock_members <= award:
+                if self.max_flock_members <= len(flock.flock_members):
                     break
                 # Next each member needs to be awarded
                 # Since FlockManager doesn't actually store boids, just their ids, we have to cross reference
@@ -63,12 +63,12 @@ class FlockManager:
                 for member in flock.flock_members:
                     # Each boid is awarded points equal to either the length of the flock or the pref. flock
                     # size, whichever is smaller. We also check to make sure the awards are in bounds
-                    if 0 <= award < self.pref_flock_members:
+                    if 0 <= len(flock.flock_members) < self.pref_flock_members:
                         member.increment_score(award)
                         total += award
-                    elif self.pref_flock_members <= award < self.max_flock_members:
-                        member.increment_score(self.pref_flock_members)
-                        total += self.pref_flock_members
+                    elif self.pref_flock_members <= len(flock.flock_members) < self.max_flock_members:
+                        member.increment_score(self.pref_flock_members * 10)
+                        total += self.pref_flock_members * 10
         return total
 
     # Calculates the position of centroids, the value of average thetas, and the scores for each flock
