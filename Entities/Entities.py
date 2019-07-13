@@ -24,11 +24,10 @@ class Entity:
 class Boid(Entity):
 
     def __init__(self, boid_id, x, y, radius, divergence_value=1):
-        # TODO Draw too_close and too_far and create a set collide distance
         super().__init__(boid_id, x, y)
         self.radius = radius                            # used in display calculations
         self.too_close = self.radius * 4                # used to determine when boids should avoid each other
-        self.too_far = self.radius * 800                # used to determine when the boids are too far to flock
+        self.too_far = self.radius * 16                 # used to determine when the boids are too far to flock
         self.vel = Vector2D.Vector2D()                  # current velocity of the boid
         self.my_dir = 0                                 # current heading of the boid
         self.divergence = divergence_value              # used to produce random movement between boids
@@ -45,7 +44,7 @@ class Boid(Entity):
         self.cost = 0                                   # used as part of evaluating the fitness of the model
         self.live_time = 0                              # used as part of evaluating the fitness of the model
 
-    # Returns the magnitude of the velocity vector
+    # Returns the magnitude of the velocity vector, the speed of the boid
     def get_speed(self):
         return abs(self.vel)
 
@@ -116,7 +115,7 @@ class Boid(Entity):
         # Change our y position
         if y >= board_dims[1] - self.radius:
             y = board_dims[1] - self.radius
-        if y < 12 + self.radius:  # 12 is the height of the text display at the top
+        if y < 12 + self.radius:  # 12 is the height of the in_text display at the top
             y = 12 + self.radius
         self.pos = Vector2D.Vector2D(x, y)
         self.my_dir = (180 + self.vel.argument()) % 360
@@ -131,9 +130,9 @@ class Boid(Entity):
         # penalty for not heading towards a goal
         if self.goal_dir == -1:
             self.cost += 1
-        # penalty for not heading towards the flock's perceived goal direction
-        # self.cost += (self.my_dir - flock_goal_dir)/100
+        # penalty for flock not heading towards the flock's perceived goal direction
 
+        # Update live_time
         self.live_time = playtime
 
     # Takes a tuple containing the position of an object and returns its angle relative to the boid's heading
@@ -155,7 +154,7 @@ class Boid(Entity):
 
     # Just your friendly neighborhood distance formula
     def calc_dist_to_object(self, pos):
-        return math.pow(self.pos[0] - pos[0], 2) + pow(self.pos[1] - pos[1], 2)
+        return math.sqrt(math.pow(self.pos[0] - pos[0], 2) + pow(self.pos[1] - pos[1], 2))
 
     # Creates a list of connections, that is boids that are visible and have a distance within range
     # If boids collide, a list is made so that the game manager can remove them
@@ -174,7 +173,7 @@ class Boid(Entity):
                 if self.is_object_visible(theta) and dist <= self.too_far:
                     self.connected_boids.append(temp_boid)
                 # If the boid is too close, add it to our collision list and remove it from our connections if present
-                if dist <= self.radius * 3:
+                if dist <= self.radius:
                     self.collisions.append(temp_boid)
                     if temp_boid in self.connected_boids:
                         self.connected_boids.remove(temp_boid)

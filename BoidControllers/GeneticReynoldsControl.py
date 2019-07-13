@@ -274,20 +274,21 @@ class ReynoldsGeneticAlgorithm:
         return child_species_1, child_species_2, child_species_3, child_species_4
 
     def advance_generation(self, crossover_type=0):
-        next_gen = []
+        if self.generation_number + 1 != self.max_generation:
+            next_gen = []
 
-        # Kill off the least performing chromosomes and randomly breed the survivors in pairs
-        self.cull_bottom_half()
-        random.shuffle(self.survivors)
+            # Kill off the least performing chromosomes and randomly breed the survivors in pairs
+            self.cull_bottom_half()
+            random.shuffle(self.survivors)
 
-        while self.survivors:
-            parent_1 = self.survivors.pop()
-            parent_2 = self.survivors.pop()
-            child_list = self.breed_species(parent_1, parent_2, crossover_type)
-            for child in child_list:
-                next_gen.append(child)
+            while self.survivors:
+                parent_1 = self.survivors.pop()
+                parent_2 = self.survivors.pop()
+                child_list = self.breed_species(parent_1, parent_2, crossover_type)
+                for child in child_list:
+                    next_gen.append(child)
 
-        self.species_list = next_gen
+            self.species_list = next_gen
         self.generation_number += 1
 
 
