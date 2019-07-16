@@ -4,29 +4,17 @@ Pyboids - SimulationManager
  * Copyright (c) 2019 Meaj
 """
 import sys
-import pygame
 import random
-from Entities.Entities import Boid, Entity
+from Constants import *
+from Entities.Entities import Boid, Goal
 from Managers.FlockManager import FlockManager
 from BoidControllers.GeneticReynoldsControl import move_all_boids_genetic, \
     ReynoldsChromosome, SeededReynoldsGeneticAlgorithm
-from Managers.DisplayManager import DisplayManager
-
-# Game_state Definitions
-LOADED = -2
-EXIT = -1
-MAIN_MENU = 0
-NEW_SIM_MENU = 1
-LOAD_SIM_MENU = 2
-HELP_MENU = 3
-RUN_SIMULATION = 4
-PAUSE_SIMULATION = 5
-END_SIMULATION = 6
 
 
 class SimulationManager:
     def __init__(self, window_width=980, sim_area_height=620, fps=30, boid_radius=7,
-                 visual_mode=True, flock_monitoring=True, version="0.0.0"):
+                 visual_mode=True, flock_monitoring=False, version="0.0.0"):
         # Initialize random and pygame
         random.seed()
         pygame.init()
@@ -52,14 +40,26 @@ class SimulationManager:
 
         # Manager creation
         if visual_mode:
-            if flock_monitoring:
-                self.display_manager = DisplayManager(pygame, (self.window_width, self.window_height),
-                                                      sim_area_height, self.boid_radius)
-            else:
-                self.display_manager = DisplayManager(pygame, (self.window_width, sim_area_height),
-                                                      sim_area_height, self.boid_radius)
-        else:
-            self.display_manager = None
+            if not flock_monitoring:
+                self.window_height = self.sim_area_height
+            self.screen = pygame.display.set_mode((self.window_width, self.sim_area_height), pygame.DOUBLEBUF)
+            # Setup Background
+            self.background = pygame.Surface(self.screen.get_size()).convert()
+            self.background.fill(BLACK)
+
+            # Boid image setup
+            self.boid_image = pygame.image.load("Sprites/boid_sprite.png")
+            self.boid_image.convert_alpha(self.boid_image)
+            pygame.display.set_icon(self.boid_image)
+            self.boid_image = pygame.transform.smoothscale(self.boid_image, (boid_radius * 2, boid_radius * 2))
+
+            # Font setup
+            self.normal_font = pygame.font.SysFont('courier new', 12, bold=True)
+            self.large_font = pygame.font.SysFont('courier new', 48, bold=True)
+
+        self.visual_mode = visual_mode
+        self.flock_monitoring = flock_monitoring
+
         self.flock_manager = FlockManager()
         self.game_state = LOADED
 
@@ -104,10 +104,10 @@ class SimulationManager:
                 sim_score += self.flock_manager.update_flock_score(boid)
                 # temporary goal redeployment
                 g_id = boid.nearest_goal.get_id()
-                self.goal_list[g_id] = Entity(g_id, random.randrange(self.boid_radius,
-                                                                     self.window_width - self.boid_radius),
-                                              random.randrange(15 + self.boid_radius, self.sim_area_height -
-                                                               self.boid_radius))
+                self.goal_list[g_id] = Goal(g_id, random.randrange(self.boid_radius,
+                                                                   self.window_width - self.boid_radius),
+                                            random.randrange(15 + self.boid_radius, self.sim_area_height -
+                                                             self.boid_radius), 3)
         return sim_score
 
     # Check for keyboard input
@@ -140,15 +140,82 @@ class SimulationManager:
     # Goal Deployment
     def deploy_goals(self, goal_number):
         for i in range(0, goal_number):
-            self.goal_list.append(Entity(i, random.randrange(self.boid_radius, self.window_width - self.boid_radius),
-                                         random.randrange(15 + self.boid_radius,
-                                                          self.sim_area_height - self.boid_radius)))
+            self.goal_list.append(Goal(i, random.randrange(self.boid_radius, self.window_width - self.boid_radius),
+                                  random.randrange(15 + self.boid_radius,
+                                  self.sim_area_height - self.boid_radius), 3))
 
     # Boid Deployment
     def deploy_boids(self, boid_number):
         for i in range(0, boid_number):
             self.boid_list.append(Boid(i, random.randrange(self.boid_radius, self.window_width),
                                        random.randrange(15 + self.boid_radius, self.sim_area_height), self.boid_radius))
+
+    def display_flock_data(self):
+        flock_list = self.flock_manager.get_flocks()
+        monitor = pygame.Surface((self.window_width, self.window_height - self.sim_area_height))
+        monitor.blit(
+            self.normal_font.render("Number  |     Centroids    |  Direction  |  Goal Direction  |  Score  |  Members",
+                                    True, GREEN), (11, 0))
+
+        for idx, flock in enumerate(flock_list):
+            members = []
+            for member in flock.flock_members:
+                members.append(member.get_id())
+            cent = "{:3.2f}, {:3.2f}".format(flock.flock_centroid.x, flock.flock_centroid.y)
+            string = "{0:^6}{1:^5s}{2:^15}{1:^4s}{3:^10.2f}{1:^4s}{4:^14.2f}{1:^5s}{5:^6d}{1:^4s}{6:}".\
+                format(idx + 1, "|", cent, flock.flock_velocity.argument(),
+                       flock.flock_goal_dir, flock.flock_score, members)
+            monitor.blit(self.normal_font.render(string, True, GREEN), (12, (idx + 1) * 13))
+            pygame.draw.line(monitor, GREEN, (0, (idx+1) * 13), (self.window_width, (idx + 1) * 13))
+        pygame.draw.line(monitor, GREEN, (0, (len(flock_list) + 1) * 13), (self.window_width,
+                                                                           (len(flock_list) + 1) * 13))
+        self.screen.blit(monitor, (0, self.sim_area_height+1))
+
+    # Displays monitoring data at the top of the screen
+    # clock.get_fps(), playtime, len(flocks.get_flocks()), gen_num, iter_num
+    def display_simulation_overview(self, gen_num, species_num):
+        text = "FPS: {:6.2f}{}PLAYTIME: {:6.2f}{}FLOCKS: {}{}GENERATION: {}{}SPECIES: {}".\
+            format(self.clock.get_fps(), " " * 5, self.playtime, " " * 5, len(self.flock_manager.flock_list), " " * 5,
+                   gen_num, " " * 5, species_num)
+        surface = self.normal_font.render(text, True, (0, 255, 0))
+        self.screen.blit(surface, (0, 0))
+
+    def menu_button(self, text, x_pos, y_pos, width, height, on_color, off_color, function=None):
+        mouse = pygame.mouse.get_pos()
+        click = pygame.mouse.get_pressed()
+        if x_pos < mouse[0] < x_pos + width and y_pos < mouse[1] < y_pos + height:
+            pygame.draw.rect(self.screen, on_color, (x_pos, y_pos, width, height))
+            if click[0] == 1 and function is not None:
+                print("clicked")
+                function()
+        else:
+            pygame.draw.rect(self.screen, off_color, (x_pos, y_pos, width, height))
+        button_surf, button_rect = text_setup(text, self.normal_font)
+        button_rect.center = (x_pos+width/2, y_pos+height/2)
+        self.screen.blit(button_surf, button_rect)
+
+    def draw_simulation_screen(self, gen_num=0, iter_num=0):
+        # Clear the screen
+        self.background.fill(BLACK)
+        # Draw the monitoring at the top of the screen
+        self.display_simulation_overview(gen_num, iter_num)
+        # Draw objects in the simulation area
+        for boid in self.boid_list:
+            boid.display_boid(self.boid_image, self.screen, self.background, self.show_centroids)
+        for goal in self.goal_list:
+            goal.display_goal(self.screen)
+        if self.show_centroids:
+            # Draw flock centroids and velocity vectors
+            for flock in self.flock_manager.flock_list:
+                flock.display_flock_centroid_vectors(self.screen, self.background)
+        # Draw the flock data at the bottom
+        self.display_flock_data()
+        # Draw bottom line for sim area
+        pygame.draw.line(self.background, GREEN, (0, self.sim_area_height), (self.window_width, self.sim_area_height))
+        # Draw top line for sim area
+        pygame.draw.line(self.background, GREEN, (0, 12), (self.window_width, 12))
+        pygame.display.flip()  # (╯°□°)╯︵ ┻━┻
+        self.screen.blit(self.background, (0, 0))
 
     def species_simulation(self, genome, gen_num, species_number):
         self.playtime = 0
@@ -167,7 +234,7 @@ class SimulationManager:
                 continue
 
             # Get key presses/events
-            if self.display_manager:
+            if self.visual_mode:
                 self.listen_for_keys()
 
             # Timing calculations
@@ -203,15 +270,13 @@ class SimulationManager:
                 continue
 
             # Call our display functions
-            if self.display_manager:
-                self.display_manager.draw_simulation_screen(self.clock, self.playtime, self.flock_manager,
-                                                            self.boid_list, self.goal_list, self.show_centroids,
-                                                            gen_num, species_number)
+            if self.visual_mode:
+                self.draw_simulation_screen(gen_num, species_number)
 
         return fitness
 
     # Controls the simulation
-    def run_simulation(self, crossover_type=6, generations=2, species=5, mutation_rate=20,
+    def run_simulation(self, crossover_type=6, generations=1, species=5, mutation_rate=20,
                        genome=None):
         # the number of iterations per generation, the mutation rate denominator, and our seed
         if not genome:
@@ -331,9 +396,8 @@ class SimulationManager:
                 exit()
 
             # Call our display functions
-            if self.display_manager:
-                self.display_manager.draw_simulation_screen(self.clock, self.playtime, self.flock_manager,
-                                                            self.boid_list, self.goal_list, self.show_centroids)
+            if self.visual_mode:
+                self.draw_simulation_screen(1, 1)
 
         print("Fitness was: {}".format(self.fitness_function(sim_score, self.boid_list)))
         pygame.quit()
@@ -345,9 +409,33 @@ class SimulationManager:
         while self.game_state != EXIT:
             self.listen_for_keys()
 
-            self.display_manager.draw_start_screen(version=self.version, function_1=self.simulation_setup_menu,
-                                                   function_2=self.simulation_load_menu,
-                                                   function_3=self.simulation_setup_menu)
+            self.background.fill(BLACK)
+            self.screen.blit(self.background, (0, 0))
+            title = "PyBoids"
+            tag_line = "An Experimental AI Simulation"
+            version_data = "Version {}".format(self.version)
+
+            title_surf, title_rect = text_setup(title, self.large_font)
+            title_rect.center = (self.window_width / 2, 3 * self.window_height / 16)
+
+            tag_surf, tag_rect = text_setup(tag_line, self.normal_font)
+            tag_rect.center = (self.window_width / 2, (3 * self.window_height / 16) + 32)
+
+            vers_surf, vers_rect = text_setup(version_data, self.normal_font)
+            vers_rect.topleft = (6, self.window_height - 12)
+
+            self.screen.blit(title_surf, title_rect)
+            self.screen.blit(tag_surf, tag_rect)
+            self.screen.blit(vers_surf, vers_rect)
+
+            self.menu_button("New Sim", self.window_width / 2 - 60, 1 * self.window_height / 2, 120, 60, LIGHT_GREY,
+                             GREY, self.simulation_setup_menu)
+            self.menu_button("Load Sim", self.window_width / 2 - 60, 5 * self.window_height / 8, 120, 60, LIGHT_GREY,
+                             GREY, self.simulation_load_menu)
+            # self.menu_button("Help ?", self.window_width / 2 - 60, 3 * self.window_height / 4, 120, 60, LIGHT_GREY,
+            # GREY, function_3)
+
+            pygame.display.update()
         print("Program exited from start menu")
         pygame.quit()
         exit()
@@ -358,7 +446,22 @@ class SimulationManager:
         while self.game_state != EXIT:
             self.listen_for_keys()
 
-            self.display_manager.draw_simulation_settings_screen(self.run_simulation, self.start_menu)
+            self.background.fill(BLACK)
+            self.screen.blit(self.background, (0, 0))
+
+            title = "SETUP IN DEVELOPMENT: PRESS BEGIN TO VIEW TEST"
+            title_surf, title_rect = text_setup(title, self.large_font)
+            title_rect.center = (self.window_width / 2, 3 * self.window_height / 16)
+
+            self.menu_button("Begin Sim", self.window_width / 3 - 60, 3 * self.window_height / 4, 120, 60, LIGHT_GREY,
+                             GREY,
+                             self.run_simulation)
+            self.menu_button("Go Back", 2 * self.window_width / 3 - 60, 3 * self.window_height / 4, 120, 60, LIGHT_GREY,
+                             GREY,
+                             self.start_menu)
+
+            self.screen.blit(title_surf, title_rect)
+            pygame.display.update()
         print("Program exited from setup menu")
         pygame.quit()
         exit()
@@ -368,7 +471,22 @@ class SimulationManager:
         self.game_state = LOAD_SIM_MENU
         while self.game_state != EXIT:
             self.listen_for_keys()
-            self.display_manager.draw_load_simulation_screen(self.run_simulation, self.start_menu)
+            self.background.fill(BLACK)
+            self.screen.blit(self.background, (0, 0))
+            title = "Load Simulation: Coming Soon"
+            title_surf, title_rect = text_setup(title, self.large_font)
+            title_rect.center = (self.window_width / 2, 3 * self.window_height / 16)
+
+            self.menu_button("Load Sim", self.window_width / 3 - 60, 3 * self.window_height / 4, 120, 60, LIGHT_GREY,
+                             GREY,
+                             None)
+            self.menu_button("Go Back", 2 * self.window_width / 3 - 60, 3 * self.window_height / 4, 120, 60, LIGHT_GREY,
+                             GREY,
+                             self.start_menu)
+
+            self.screen.blit(title_surf, title_rect)
+            pygame.display.update()
+
         print("Program exited from load menu")
         pygame.quit()
         exit()

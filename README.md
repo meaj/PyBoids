@@ -33,6 +33,7 @@ More information regarding using the genetic algorithm to optimize the boids sim
 
 ### Contents
 * **PyBoids.py**: The driver for this project
+* **Constants.py**: Contains the constant definitions for the project
 * **Entities**: This directory contains the classes that entities are instantiated from. Entities include boid objects and the goal tokens they search for.
 * **Managers**: This directory contains the classes that manage entities, output to screen, and call the appropriate boid controllers
 * **BoidControllers**: This directory contains the classes that control boid movement for various simulations

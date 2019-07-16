@@ -5,6 +5,7 @@ Pyboids - FlockManager
 """
 from Entities.Vector2D import Vector2D
 import math
+from Constants import *
 
 
 class Flock:
@@ -51,6 +52,18 @@ class Flock:
             else:
                 temp_theta = 2 * math.pi - temp_theta
             self.flock_goal_dir = (math.degrees(temp_theta)-90) % 360
+
+    # Draws shapes representing the centroids of the flocks of boid objects as well as the velocity of the flocks
+    def display_flock_centroid_vectors(self, screen, background):
+        x = self.flock_centroid.x
+        y = self.flock_centroid.y
+        surface = pygame.Surface((6, 6))
+        surface.convert_alpha(surface)
+        surface.set_colorkey(BLACK)
+        pygame.draw.circle(surface, PURPLE, (3, 3), 3)
+        pygame.draw.line(background, RED, (x, y), (x + (self.flock_velocity.x * x / 16),
+                                                   y + (self.flock_velocity.y * y / 16)))
+        screen.blit(surface, (x, y))
 
 
 class FlockManager:
@@ -120,3 +133,4 @@ class FlockManager:
             if t_flock not in flocks:
                 flocks.append(Flock(t_flock))
         self.flock_list = flocks
+

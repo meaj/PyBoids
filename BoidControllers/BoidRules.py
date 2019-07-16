@@ -4,8 +4,7 @@ Pyboids - BoidRules
 """
 
 from Entities.Vector2D import Vector2D
-
-MAX_FORCE = 2
+from Constants import MAX_FORCE
 
 
 def force_limiter(in_vector):

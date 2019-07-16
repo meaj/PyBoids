@@ -5,8 +5,8 @@ Pyboids - Entities
 """
 import math
 from Entities import Vector2D
+from Constants import *
 
-MAX_VELOCITY = 3.5
 
 
 class Entity:
@@ -20,6 +20,19 @@ class Entity:
     def get_id(self):
         return self.entity_id
 
+
+class Goal(Entity):
+    def __init__(self, goal_id, x, y, radius):
+        super().__init__(goal_id, x, y)
+        self.radius = radius
+
+    # Draws shapes representing goal objects
+    def display_goal(self, screen):
+        surface = pygame.Surface((2*self.radius, 2*self.radius))
+        surface.convert_alpha(surface)
+        surface.set_colorkey(BLACK)
+        pygame.draw.circle(surface, GOLD, (self.radius, self.radius), self.radius)
+        screen.blit(surface, (self.pos.x, self.pos.y))
 
 class Boid(Entity):
 
@@ -199,3 +212,22 @@ class Boid(Entity):
             self.goal_dir = temp  # goal is visible
         else:
             self.goal_dir = -1  # goal is not visible
+
+    # Draws shapes representing the boid objects
+    def display_boid(self, boid_image, screen, background, draw_details):
+        angle = self.my_dir
+        boid_shape = boid_image
+        boid_shape = pygame.transform.rotozoom(boid_shape, angle, 1)
+        boid_rect = boid_shape.get_rect(center=(self.pos.x, self.pos.y))
+        screen.blit(boid_shape, boid_rect)
+        if draw_details:
+            txt_surface = pygame.font.SysFont('mono', 10, bold=False).render(str(self.entity_id), True, (0, 255, 0))
+            too_close_rect = pygame.Rect(0, 0, self.too_close, self.too_close)
+            too_close_rect.center = (self.pos.x, self.pos.y)
+            pygame.draw.arc(background, RED, too_close_rect,
+                            math.radians(angle - 135 + 90), math.radians(angle + 135 + 90))
+            too_far_rect = pygame.Rect(0, 0, self.too_far, self.too_far)
+            too_far_rect.center = (self.pos.x, self.pos.y)
+            pygame.draw.arc(background, GOLD, too_far_rect,
+                            math.radians(angle - 135 + 90), math.radians(angle + 135 + 90))
+            screen.blit(txt_surface, (self.pos.x, self.pos.y))
