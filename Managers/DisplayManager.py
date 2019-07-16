@@ -25,7 +25,8 @@ def text_setup(string, font):
     return surf, surf.get_rect()
 
 
-# TODO convert button function to button objects
+# TODO Adjust display functions, considering removing display manager class, moving functions as appropriate, and
+#  calling display functions as needed from simulation manager. This may work better with menu driven system
 class Button:
     def __init__(self, text, x_pos, y_pos, width, height, pygame_instance, function=None):
         self.pygame = pygame_instance
@@ -226,7 +227,7 @@ class DisplayManager:
 
         self.menu_button("New Sim", self.window_width / 2 - 60, 1 * self.window_height / 2, 120, 60, LIGHT_GREY, GREY, function_1)
         self.menu_button("Load Sim", self.window_width / 2 - 60, 5 * self.window_height / 8, 120, 60, LIGHT_GREY, GREY, function_2)
-        self.menu_button("Help ?", self.window_width / 2 - 60, 3 * self.window_height / 4, 120, 60, LIGHT_GREY, GREY, function_3)
+        #self.menu_button("Help ?", self.window_width / 2 - 60, 3 * self.window_height / 4, 120, 60, LIGHT_GREY, GREY, function_3)
 
         self.pygame.display.update()
 
@@ -235,7 +236,7 @@ class DisplayManager:
         self.background.fill(BLACK)
         self.screen.blit(self.background, (0, 0))
 
-        title = "Setup New Simulation"
+        title = "SETUP IN DEVELOPMENT: PRESS BEGIN TO VIEW TEST"
         title_surf, title_rect = text_setup(title, self.large_font)
         title_rect.center = (self.window_width / 2, 3 * self.window_height / 16)
 
@@ -251,7 +252,7 @@ class DisplayManager:
     def draw_load_simulation_screen(self, function_1, function_2):
         self.background.fill(BLACK)
         self.screen.blit(self.background, (0, 0))
-        title = "Load Simulation"
+        title = "Load Simulation: Coming Soon"
         title_surf, title_rect = text_setup(title, self.large_font)
         title_rect.center = (self.window_width / 2, 3 * self.window_height / 16)
 
