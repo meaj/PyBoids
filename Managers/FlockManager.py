@@ -105,21 +105,18 @@ class FlockManager:
         self.flock_list = []
         flocks = []
         for boid in boids:
-            # Extract all the boid IDs to the list of new connections, con
-            con = []
-            for entry in boid.get_connected_boids():
-                con.append(entry)
-            # Begin placing con into flocks
-            # Check for overlap and add to list if overlap exists
+            # Extract all the boid IDs to the list of new connections, t_flock
+            t_flock = boid.get_connected_boids()
+            # Begin placing t_flock into flocks
+            # Check for overlap and add difference to connections before removing old flock
             for flock in flocks:
-                for entry in con:
-                    if entry in flock.flock_members:
-                        update = set(con).union(set(flock.flock_members))
-                        con.extend(update)
-                        flocks.remove(flock)
-                        del flock
-                        break
-            con = list(set(con))
-            if con not in flocks:
-                flocks.append(Flock(con))
+                overlap = set(flock.flock_members).intersection(set(t_flock))
+                if overlap:
+                    t_flock.extend(set(t_flock).union(set(flock.flock_members)))
+                    flocks.remove(flock)
+                    del flock
+            # Remove any lingering duplicates
+            t_flock = list(set(t_flock))
+            if t_flock not in flocks:
+                flocks.append(Flock(t_flock))
         self.flock_list = flocks

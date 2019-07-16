@@ -23,9 +23,10 @@ RUN_SIMULATION = 4
 PAUSE_SIMULATION = 5
 END_SIMULATION = 6
 
+
 class SimulationManager:
     def __init__(self, window_width=980, sim_area_height=620, fps=30, boid_radius=7,
-                 visual_mode=True, flock_monitoring=False, version="0.0.0"):
+                 visual_mode=True, flock_monitoring=True, version="0.0.0"):
         # Initialize random and pygame
         random.seed()
         pygame.init()
@@ -149,7 +150,7 @@ class SimulationManager:
             self.boid_list.append(Boid(i, random.randrange(self.boid_radius, self.window_width),
                                        random.randrange(15 + self.boid_radius, self.sim_area_height), self.boid_radius))
 
-    def species_simulation(self, genome, gen_num, iter_num):
+    def species_simulation(self, genome, gen_num, species_number):
         self.playtime = 0
         num_flocks = 0
         self.game_state = RUN_SIMULATION
@@ -161,7 +162,7 @@ class SimulationManager:
                     sim_score -= boid.get_cost()
                 fitness = self.fitness_function(sim_score, self.boid_list)
                 print("Fitness was: {}".format(fitness))
-                print("This sim was run for {0:.2f} seconds before finishing".format(self.playtime))
+                print("Species {0:} ran for {1:.2f} seconds before being stopped".format(species_number, self.playtime))
                 self.game_state = END_SIMULATION
                 continue
 
@@ -196,7 +197,8 @@ class SimulationManager:
             if len(self.boid_list) == 0:
                 fitness = self.fitness_function(sim_score, self.boid_list)
                 print("Fitness was: {}".format(fitness))
-                print("This sim was run for {0:.2f} seconds before all boids died".format(self.playtime))
+                print("Species {0:} ran for {0:.2f} seconds before all boids died".
+                      format(species_number, self.playtime))
                 self.game_state = END_SIMULATION
                 continue
 
@@ -204,31 +206,32 @@ class SimulationManager:
             if self.display_manager:
                 self.display_manager.draw_simulation_screen(self.clock, self.playtime, self.flock_manager,
                                                             self.boid_list, self.goal_list, self.show_centroids,
-                                                            gen_num, iter_num)
+                                                            gen_num, species_number)
 
         return fitness
 
     # Controls the simulation
-    def run_simulation(self, crossover_type=0, generations=25, species=12, mutation_rate=25,
+    def run_simulation(self, crossover_type=6, generations=2, species=5, mutation_rate=20,
                        genome=None):
         # the number of iterations per generation, the mutation rate denominator, and our seed
         if not genome:
-            genome = [1 / 7.5, 1, 1 / 2, 1, 1, 1.1]
+            genome = [random.uniform(-1, 1), random.uniform(-1, 1),  random.uniform(-1, 1), random.uniform(-1, 1),
+                      random.uniform(-1, 1), random.uniform(-1, 1)]
         genetic_algorithm = SeededReynoldsGeneticAlgorithm(generations, species, mutation_rate, genome)
         if self.end_time == 0:
-            self.end_time = 15
+            self.end_time = 10
         if self.max_pop == 0:
-            self.max_pop = 12
+            self.max_pop = 32
         # Loop through each generation
         while genetic_algorithm.generation_number < genetic_algorithm.max_generation and self.game_state != EXIT:
             # Loop through each species
-            idx = 1
-            for species in genetic_algorithm.get_species_list():
+            for idx, species in enumerate(genetic_algorithm.get_species_list()):
                 if self.game_state == EXIT:
                     break
+                self.playtime = 0
                 # Try to ensure that each species has the same seed for goal and boid placement
                 random.seed(genetic_algorithm.generation_number)
-                species.set_id(idx)
+                species.set_id(idx+1)
                 print("Generation {} Species {}".format(genetic_algorithm.generation_number, species.get_id()))
                 # Create new population for each generation
                 self.boid_list = []
@@ -244,7 +247,6 @@ class SimulationManager:
                     [genetic_algorithm.generation_number, species.get_id(),
                      species.get_genome(), fitness,
                      species.get_livetime(), species.get_survivors()])
-                idx += 1
             # Find best species from each generation
             best_score = -sys.maxsize - 1
             best_species = genetic_algorithm.get_species_list()[0]

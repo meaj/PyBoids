@@ -230,7 +230,6 @@ class ReynoldsGeneticAlgorithm:
             chance = random.randrange(1, self.mutation_rate + 1, 1)
             if chance == self.mutation_rate:
                 chromosome[idx] = random.randrange(-1000, 1000)/1000
-            idx += 1
         return chromosome
 
     # Creates 4 children from 2 parents
@@ -271,7 +270,11 @@ class ReynoldsGeneticAlgorithm:
         child_species_2 = ReynoldsSpecies(self.generation_number, 0, child_2)
         child_species_3 = ReynoldsSpecies(self.generation_number, 0, child_3)
         child_species_4 = ReynoldsSpecies(self.generation_number, 0, child_4)
-        return child_species_1, child_species_2, child_species_3, child_species_4
+
+        # Shuffling a list of the children prevents the first child from always being chosen if there are too many
+        children = [child_species_1, child_species_2, child_species_3, child_species_4]
+        random.shuffle(children)
+        return children
 
     def advance_generation(self, crossover_type=0):
         if self.generation_number + 1 != self.max_generation:
@@ -281,11 +284,19 @@ class ReynoldsGeneticAlgorithm:
             self.cull_bottom_half()
             random.shuffle(self.survivors)
 
-            while self.survivors:
+            # Randomly select two survivors and collect children until the species maximum is reached
+            # A backup parent is chosen if there is an odd number of parents, may cause inbreeding which will be neat
+            backup = random.choice(self.survivors)
+            while len(next_gen) != len(self.species_list):
                 parent_1 = self.survivors.pop()
-                parent_2 = self.survivors.pop()
+                if self.survivors:
+                    parent_2 = self.survivors.pop()
+                else:
+                    parent_2 = backup
                 child_list = self.breed_species(parent_1, parent_2, crossover_type)
                 for child in child_list:
+                    if len(next_gen) == len(self.species_list):
+                        break
                     next_gen.append(child)
 
             self.species_list = next_gen

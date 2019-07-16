@@ -8,6 +8,7 @@ import pygame
 
 # Color Definitions
 RED = (255, 0, 0)
+PURPLE = (230, 0, 230)
 GREEN = (0, 255, 0)
 DARK_GREEN = (0, 200, 0)
 GREY = (35, 35, 35)
@@ -59,7 +60,7 @@ class Button:
 class InputBox:
     def __init__(self, in_text, title_text, x_pos, y_pos, width, height, pygame_instance):
         self.pygame = pygame_instance
-        self.text_rect = self.pygame.Rect(x_pos, y_pos, width, height)
+        self.text_rect = self.pygame.Rect(x_pos + width, y_pos, width, height)
         self.in_text = in_text
         self.font = pygame_instance.font.SysFont('courier new', 12, bold=True)
         self.text_surf = self.font.render(in_text, False, GREEN)
@@ -109,7 +110,9 @@ class DisplayManager:
         # Boid image setup
         self.boid_image = pygame_instance.image.load("Sprites/boid_sprite.png")
         self.boid_image.convert_alpha(self.boid_image)
+        self.pygame.display.set_icon(self.boid_image)
         self.boid_image = self.pygame.transform.smoothscale(self.boid_image, (boid_radius*2, boid_radius*2))
+
 
         # Font setup
         self.normal_font = pygame_instance.font.SysFont('courier new', 12, bold=True)
@@ -117,11 +120,6 @@ class DisplayManager:
 
         # Input box setup
         # TODO: Clean this up
-        self.base_boxes = [InputBox("", "Pop Size", self.window_width/2, 180, 30, 12, self.pygame),
-                           InputBox("", "End Time", self.window_width/2, 200, 30, 12, self.pygame)]  # pop size, run time
-        self.gene_input_boxes = []  # cohesion, separation, alignment, goal_seek, wall_avoid, divergence
-        self.new_sim_boxes = []  # species number, mutation rate
-        self.load_sim_boxes = []  # file inputs
 
     def display_flock_data(self, flocks):
         flock_list = flocks.get_flocks()
@@ -130,18 +128,16 @@ class DisplayManager:
             self.normal_font.render("Number  |     Centroids    |  Direction  |  Goal Direction  |  Score  |  Members", True,
                                     GREEN), (11, 0))
 
-        i = 0
-        for flock in flock_list:
+        for idx, flock in enumerate(flock_list):
             members = []
             for member in flock.flock_members:
                 members.append(member.get_id())
             cent = "{:3.2f}, {:3.2f}".format(flock.flock_centroid.x, flock.flock_centroid.y)
             string = "{0:^6}{1:^5s}{2:^15}{1:^4s}{3:^10.2f}{1:^4s}{4:^14.2f}{1:^5s}{5:^6d}{1:^4s}{6:}"\
-                .format(i + 1, "|", cent, flock.flock_velocity.argument(), flock.flock_goal_dir, flock.flock_score, members)
-            monitor.blit(self.normal_font.render(string, True, GREEN), (12, (i + 1) * 13))
-            self.pygame.draw.line(monitor, GREEN, (0, (i+1) * 13), (self.window_width, (i + 1) * 13))
-            i += 1
-        self.pygame.draw.line(monitor, GREEN, (0, (i + 1) * 13), (self.window_width, (i + 1) * 13))
+                .format(idx + 1, "|", cent, flock.flock_velocity.argument(), flock.flock_goal_dir, flock.flock_score, members)
+            monitor.blit(self.normal_font.render(string, True, GREEN), (12, (idx + 1) * 13))
+            self.pygame.draw.line(monitor, GREEN, (0, (idx+1) * 13), (self.window_width, (idx + 1) * 13))
+        self.pygame.draw.line(monitor, GREEN, (0, (len(flock_list) + 1) * 13), (self.window_width, (len(flock_list) + 1) * 13))
         self.screen.blit(monitor, (0, self.sim_area_height+1))
 
     # Displays monitoring data at the top of the screen
@@ -190,7 +186,7 @@ class DisplayManager:
         surface = self.pygame.Surface((6, 6))
         surface.convert_alpha(surface)
         surface.set_colorkey(BLACK)
-        self.pygame.draw.circle(surface, RED, (3, 3), 3)
+        self.pygame.draw.circle(surface, PURPLE, (3, 3), 3)
         self.pygame.draw.line(self.background, RED, (x, y), (x + (angle.x * x / 16), y + (angle.y * y / 16)))
         self.screen.blit(surface, (x, y))
 
@@ -247,10 +243,6 @@ class DisplayManager:
                          function_1)
         self.menu_button("Go Back", 2 * self.window_width / 3 - 60, 3 * self.window_height / 4, 120, 60, LIGHT_GREY, GREY,
                          function_2)
-        for box in self.base_boxes:
-            box.draw_box(self.screen)
-            for event in self.pygame.event.get():
-                box.handle_event(event)
 
         self.screen.blit(title_surf, title_rect)
         self.pygame.display.update()

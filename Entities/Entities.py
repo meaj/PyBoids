@@ -131,6 +131,10 @@ class Boid(Entity):
         if self.goal_dir == -1:
             self.cost += 1
         # penalty for flock not heading towards the flock's perceived goal direction
+        if flock.flock_goal_dir == -1:
+            self.cost += 1
+        else:
+            self.cost += abs((flock.flock_goal_dir - flock.flock_velocity.argument())/360)
 
         # Update live_time
         self.live_time = playtime
