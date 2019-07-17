@@ -7,6 +7,7 @@ import sys
 import random
 from Constants import *
 from Entities.Entities import Boid, Goal
+from Entities.MenuEntities import Button, InputBox
 from Managers.FlockManager import FlockManager
 from BoidControllers.GeneticReynoldsControl import move_all_boids_genetic, \
     ReynoldsChromosome, SeededReynoldsGeneticAlgorithm
@@ -61,6 +62,17 @@ class SimulationManager:
         self.flock_monitoring = flock_monitoring
 
         self.flock_manager = FlockManager()
+
+        # Button creation
+        self.main_menu_button = Button("Main Menu", -1000, -1000, 120, 60, self.start_menu)
+        self.load_menu_button = Button("Load Sim", -1000, -1000, 120, 60, self.simulation_load_menu)
+        self.setup_menu_button = Button("Setup Sim", -1000, -1000, 120, 60, self.simulation_setup_menu)
+        self.start_sim_button = Button("Begin", -1000, -1000, 120, 60, self.run_simulation)
+        self.load_sim_button = Button("Begin", -1000, -1000, 120, 60, self.run_loop)
+
+        # TextBox creation
+        self.population_input = InputBox("", "Population Size", -1000, -1000, 60, 14)
+
         self.game_state = LOADED
 
     def set_end_time(self, time):
@@ -180,20 +192,6 @@ class SimulationManager:
         surface = self.normal_font.render(text, True, (0, 255, 0))
         self.screen.blit(surface, (0, 0))
 
-    def menu_button(self, text, x_pos, y_pos, width, height, on_color, off_color, function=None):
-        mouse = pygame.mouse.get_pos()
-        click = pygame.mouse.get_pressed()
-        if x_pos < mouse[0] < x_pos + width and y_pos < mouse[1] < y_pos + height:
-            pygame.draw.rect(self.screen, on_color, (x_pos, y_pos, width, height))
-            if click[0] == 1 and function is not None:
-                print("clicked")
-                function()
-        else:
-            pygame.draw.rect(self.screen, off_color, (x_pos, y_pos, width, height))
-        button_surf, button_rect = text_setup(text, self.normal_font)
-        button_rect.center = (x_pos+width/2, y_pos+height/2)
-        self.screen.blit(button_surf, button_rect)
-
     def draw_simulation_screen(self, gen_num=0, iter_num=0):
         # Clear the screen
         self.background.fill(BLACK)
@@ -276,7 +274,7 @@ class SimulationManager:
         return fitness
 
     # Controls the simulation
-    def run_simulation(self, crossover_type=6, generations=1, species=5, mutation_rate=20,
+    def run_simulation(self, crossover_type=6, generations=25, species=24, mutation_rate=20,
                        genome=None):
         # the number of iterations per generation, the mutation rate denominator, and our seed
         if not genome:
@@ -348,13 +346,18 @@ class SimulationManager:
         gene_history.close()
 
     # Game loop
-    def run_loop(self, seed):
+    def run_loop(self):
+        self.playtime = 0
         num_flocks = 0
         self.game_state = RUN_SIMULATION
         sim_score = 0
-        self.deploy_boids(self.max_pop)
-        self.deploy_goals(5)
 
+        self.deploy_goals(5)
+        if self.end_time == 0:
+            self.end_time = 100
+        if self.max_pop == 0:
+            self.max_pop = 32
+        self.deploy_boids(self.max_pop)
         while self.game_state != EXIT:
             if self.playtime > self.end_time:
                 break
@@ -376,7 +379,7 @@ class SimulationManager:
             # Look for all collisions and handle accordingly
             sim_score = self.get_collisions(sim_score)
 
-            genome = ReynoldsChromosome(seed[0], seed[1], seed[2], seed[3], seed[4], seed[5])
+            genome = ReynoldsChromosome(-0.421513923207689, 0.544929141246922, -0.05488413118915939, 0.8147349755792612, 0.359, -0.673)
             move_all_boids_genetic(self.boid_list, self.flock_manager,
                                    (self.window_width, self.sim_area_height), self.playtime, genome)
 
@@ -402,10 +405,14 @@ class SimulationManager:
         print("Fitness was: {}".format(self.fitness_function(sim_score, self.boid_list)))
         pygame.quit()
         print("This sim was run for {0:.2f} seconds before yeeting".format(self.playtime))
+        self.game_state = EXIT
+        exit()
 
     # Runs the start menu
     def start_menu(self):
         self.game_state = MAIN_MENU
+        self.load_menu_button.set_pos(self.window_width / 2 - 60, 5 * self.window_height / 8)
+        self.setup_menu_button.set_pos(self.window_width / 2 - 60, 1 * self.window_height / 2)
         while self.game_state != EXIT:
             self.listen_for_keys()
 
@@ -428,10 +435,10 @@ class SimulationManager:
             self.screen.blit(tag_surf, tag_rect)
             self.screen.blit(vers_surf, vers_rect)
 
-            self.menu_button("New Sim", self.window_width / 2 - 60, 1 * self.window_height / 2, 120, 60, LIGHT_GREY,
-                             GREY, self.simulation_setup_menu)
-            self.menu_button("Load Sim", self.window_width / 2 - 60, 5 * self.window_height / 8, 120, 60, LIGHT_GREY,
-                             GREY, self.simulation_load_menu)
+            self.load_menu_button.check_click()
+            self.load_menu_button.draw_button(self.screen)
+            self.setup_menu_button.check_click()
+            self.setup_menu_button.draw_button(self.screen)
             # self.menu_button("Help ?", self.window_width / 2 - 60, 3 * self.window_height / 4, 120, 60, LIGHT_GREY,
             # GREY, function_3)
 
@@ -443,22 +450,29 @@ class SimulationManager:
     # Runs the menu for setting up a new simulation
     def simulation_setup_menu(self):
         self.game_state = NEW_SIM_MENU
+        self.start_sim_button.set_pos(self.window_width / 3 - 60, 3 * self.window_height / 4)
+        self.main_menu_button.set_pos(2 * self.window_width / 3 - 60, 3 * self.window_height / 4)
+        self.population_input.set_pos(self.window_width/3, 200)
+        pop_string = ""
+        self.population_input.in_text = pop_string
         while self.game_state != EXIT:
             self.listen_for_keys()
 
             self.background.fill(BLACK)
             self.screen.blit(self.background, (0, 0))
 
-            title = "SETUP IN DEVELOPMENT: PRESS BEGIN TO VIEW TEST"
+            #self.population_input.draw_box(self.screen)
+            #self.population_input.handle_event()
+
+            self.main_menu_button.check_click()
+            self.main_menu_button.draw_button(self.screen)
+            self.start_sim_button.check_click()
+            self.start_sim_button.draw_button(self.screen)
+
+            title = "SETUP IN DEVELOPMENT: PRESS BEGIN"
             title_surf, title_rect = text_setup(title, self.large_font)
             title_rect.center = (self.window_width / 2, 3 * self.window_height / 16)
 
-            self.menu_button("Begin Sim", self.window_width / 3 - 60, 3 * self.window_height / 4, 120, 60, LIGHT_GREY,
-                             GREY,
-                             self.run_simulation)
-            self.menu_button("Go Back", 2 * self.window_width / 3 - 60, 3 * self.window_height / 4, 120, 60, LIGHT_GREY,
-                             GREY,
-                             self.start_menu)
 
             self.screen.blit(title_surf, title_rect)
             pygame.display.update()
@@ -469,6 +483,8 @@ class SimulationManager:
     # Runs the menu for loading a simulation file or manually input species
     def simulation_load_menu(self):
         self.game_state = LOAD_SIM_MENU
+        self.main_menu_button.set_pos(2 * self.window_width / 3 - 60, 3 * self.window_height / 4)
+        self.load_sim_button.set_pos(self.window_width / 3 - 60, 3 * self.window_height / 4)
         while self.game_state != EXIT:
             self.listen_for_keys()
             self.background.fill(BLACK)
@@ -477,12 +493,10 @@ class SimulationManager:
             title_surf, title_rect = text_setup(title, self.large_font)
             title_rect.center = (self.window_width / 2, 3 * self.window_height / 16)
 
-            self.menu_button("Load Sim", self.window_width / 3 - 60, 3 * self.window_height / 4, 120, 60, LIGHT_GREY,
-                             GREY,
-                             None)
-            self.menu_button("Go Back", 2 * self.window_width / 3 - 60, 3 * self.window_height / 4, 120, 60, LIGHT_GREY,
-                             GREY,
-                             self.start_menu)
+            self.main_menu_button.check_click()
+            self.main_menu_button.draw_button(self.screen)
+            self.load_sim_button.check_click()
+            self.load_sim_button.draw_button(self.screen)
 
             self.screen.blit(title_surf, title_rect)
             pygame.display.update()
