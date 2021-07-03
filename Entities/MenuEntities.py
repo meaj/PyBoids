@@ -1,8 +1,6 @@
 from Constants import *
 
 
-# TODO Adjust display functions, considering removing display manager class, moving functions as appropriate, and
-#  calling display functions as needed from simulation manager. This may work better with menu driven system
 class Button:
     def __init__(self, text, x_pos, y_pos, width, height, function=None):
         self.x_pos = x_pos
@@ -48,22 +46,23 @@ class InputBox:
         self.title_rect = pygame.Rect(x_pos - width, y_pos, width, height)
         self.title_surf = self.font.render(title_text, False, GREEN)
 
-    def handle_event(self):
-        for event in pygame.event.get():
-            if event.type == pygame.MOUSEBUTTONDOWN:
-                if self.text_rect.collidepoint(event.pos):
-                    self.input_active = not self.input_active
-                else:
+    def handle_event(self, event):
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            # noinspection PyArgumentList
+            if self.text_rect.collidepoint(event.pos) and not self.input_active:
+                self.input_active = True
+            else:
+                self.input_active = False
+
+        if event.type == pygame.KEYDOWN:
+            if self.input_active:
+                if event.key == pygame.K_RETURN:
                     self.input_active = False
-            if event.type == pygame.KEYDOWN:
-                if self.input_active:
-                    if event.key == pygame.K_RETURN:
-                        self.input_active = False
-                    elif event.key == pygame.K_BACKSPACE:
-                        self.in_text = self.in_text[:-1]
-                    elif event.key in ENTRY_KEYS:
-                        self.in_text += event.unicode
-                    self.text_surf = self.font.render(self.in_text, True, LIGHT_GREY)
+                elif event.key == pygame.K_BACKSPACE:
+                    self.in_text = self.in_text[:-1]
+                elif event.key in ENTRY_KEYS:
+                    self.in_text += event.unicode
+                self.text_surf = self.font.render(self.in_text, True, GREEN)
 
     def set_pos(self, x, y):
         self.title_rect.centerx = x - self.width
@@ -74,4 +73,5 @@ class InputBox:
     def draw_box(self, screen):
         screen.blit(self.text_surf, self.text_rect)
         screen.blit(self.title_surf, self.title_rect)
+        pygame.draw.rect(screen, GREY, self.title_rect, 2)
         pygame.draw.rect(screen, LIGHT_GREY, self.text_rect, 2)

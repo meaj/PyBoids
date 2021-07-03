@@ -67,11 +67,14 @@ class SimulationManager:
         self.main_menu_button = Button("Main Menu", -1000, -1000, 120, 60, self.start_menu)
         self.load_menu_button = Button("Load Sim", -1000, -1000, 120, 60, self.simulation_load_menu)
         self.setup_menu_button = Button("Setup Sim", -1000, -1000, 120, 60, self.simulation_setup_menu)
-        self.start_sim_button = Button("Begin", -1000, -1000, 120, 60, self.run_simulation)
-        self.load_sim_button = Button("Begin", -1000, -1000, 120, 60, self.run_loop)
+        self.start_sim_button = Button("Begin", -1000, -1000, 120, 60, self.run_genetic_reynolds_simulation)
+        self.load_sim_button = Button("Begin", -1000, -1000, 120, 60, self.run_specific_iteration)
 
         # TextBox creation
         self.population_input = InputBox("", "Population Size", -1000, -1000, 60, 14)
+        self.runtime_input = InputBox("", "Run Time Seconds", -1000, -1000, 60, 14)
+
+        self.text_boxes = [self.population_input, self.runtime_input]
 
         self.game_state = LOADED
 
@@ -141,9 +144,9 @@ class SimulationManager:
             # Toggle centroid data on or off
             if presses[pygame.K_TAB] and self.game_state == RUN_SIMULATION:
                 self.show_centroids = not self.show_centroids
-            if self.game_state == NEW_SIM_MENU or self.game_state == LOAD_SIM_MENU:
-                # Check for number, period, or minus key then add appropriate value to string
-                continue
+            for box in self.text_boxes:
+                box.handle_event(event)
+
         # Pull up debugger with `
         if presses[pygame.K_BACKQUOTE]:
             import pdb
@@ -274,8 +277,8 @@ class SimulationManager:
         return fitness
 
     # Controls the simulation
-    def run_simulation(self, crossover_type=6, generations=25, species=24, mutation_rate=20,
-                       genome=None):
+    def run_genetic_reynolds_simulation(self, crossover_type=6, generations=25, species=24, mutation_rate=20,
+                                        genome=None):
         # the number of iterations per generation, the mutation rate denominator, and our seed
         if not genome:
             genome = [random.uniform(-1, 1), random.uniform(-1, 1),  random.uniform(-1, 1), random.uniform(-1, 1),
@@ -346,7 +349,7 @@ class SimulationManager:
         gene_history.close()
 
     # Game loop
-    def run_loop(self):
+    def run_specific_iteration(self):
         self.playtime = 0
         num_flocks = 0
         self.game_state = RUN_SIMULATION
@@ -354,7 +357,7 @@ class SimulationManager:
 
         self.deploy_goals(5)
         if self.end_time == 0:
-            self.end_time = 100
+            self.end_time = 60
         if self.max_pop == 0:
             self.max_pop = 32
         self.deploy_boids(self.max_pop)
@@ -379,7 +382,7 @@ class SimulationManager:
             # Look for all collisions and handle accordingly
             sim_score = self.get_collisions(sim_score)
 
-            genome = ReynoldsChromosome(-0.421513923207689, 0.544929141246922, -0.05488413118915939, 0.8147349755792612, 0.359, -0.673)
+            genome = ReynoldsChromosome(-0.10676215125149979, 0.40063408129207856, 0.8399627680188892, 0.585753191716833, -0.7086453393098968, 0.8958986441229899)
             move_all_boids_genetic(self.boid_list, self.flock_manager,
                                    (self.window_width, self.sim_area_height), self.playtime, genome)
 
@@ -453,16 +456,20 @@ class SimulationManager:
         self.start_sim_button.set_pos(self.window_width / 3 - 60, 3 * self.window_height / 4)
         self.main_menu_button.set_pos(2 * self.window_width / 3 - 60, 3 * self.window_height / 4)
         self.population_input.set_pos(self.window_width/3, 200)
-        pop_string = ""
-        self.population_input.in_text = pop_string
+        self.runtime_input.set_pos(self.window_width/3, 224)
         while self.game_state != EXIT:
             self.listen_for_keys()
 
             self.background.fill(BLACK)
             self.screen.blit(self.background, (0, 0))
 
-            #self.population_input.draw_box(self.screen)
-            #self.population_input.handle_event()
+            self.population_input.draw_box(self.screen)
+            self.runtime_input.draw_box(self.screen)
+
+            if self.population_input.in_text:
+                self.set_max_pop(int(self.population_input.in_text))
+            if self.runtime_input.in_text:
+                self.set_end_time(int(self.runtime_input.in_text))
 
             self.main_menu_button.check_click()
             self.main_menu_button.draw_button(self.screen)
